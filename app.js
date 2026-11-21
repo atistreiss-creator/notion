@@ -38,6 +38,7 @@ const peopleList = document.getElementById('peopleList');
 const template = document.getElementById('taskTemplate');
 let tasks = readTasks();
 let people = readPeople();
+let role = 'local';
 
 function clone(data) {
   return JSON.parse(JSON.stringify(data));
@@ -174,6 +175,7 @@ function renderPeople() {
     const del = document.createElement('button');
     del.type = 'button';
     del.className = 'person-remove';
+    del.disabled = role === 'viewer';
     del.textContent = '×';
     del.setAttribute('aria-label', person.name + ' 작업자 삭제');
     del.title = person.name + ' 삭제';
@@ -213,6 +215,13 @@ function makeCard(task) {
   status.value = task.status;
   card.dataset.status = task.status;
   refreshProgress(card, task);
+  if (role === 'viewer') {
+    title.disabled = true;
+    assignee.disabled = true;
+    status.disabled = true;
+    slider.disabled = true;
+    card.querySelector('[data-action="delete"]').hidden = true;
+  }
 
   title.addEventListener('input', () => {
     task.name = title.value.slice(0, 100);
@@ -250,6 +259,8 @@ function makeCard(task) {
   return card;
 }
 function render() {
+  document.getElementById('addTask').disabled = role === 'viewer';
+  document.getElementById('addPersonForm').hidden = role === 'viewer';
   renderPeople();
   list.replaceChildren();
   if (!tasks.length) {
@@ -345,6 +356,10 @@ document.getElementById('importFile').addEventListener('change', async event => 
 // Cloud downloads never trigger outgoing writes; callers must verify access via Supabase RLS.
 window.progressBoard = {
   getActiveProjectId: activeProjectId,
+  setRole(value) {
+    role = value === 'viewer' ? 'viewer' : 'editor';
+    render();
+  },
   loadProject() {
     tasks = readTasks();
     reconcileAssignees();
