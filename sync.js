@@ -77,6 +77,12 @@
 
   let retryDeadline = 0;
   let counterTimer;
+  let firstLimitedAt = 0;
+  let knownDeadline = 0;
+  function clearLimit() {
+    firstLimitedAt = knownDeadline = 0;
+    showAuthCounter(0, 0);
+  }
   function retryTime(header, now) {
     if (!header) return 0;
     if (/^\d+$/.test(header)) return now + Number(header) * 1000;
@@ -100,7 +106,7 @@
       const now = Date.now();
       const seconds = deadline ? Math.max(0, Math.ceil((deadline - now) / 1000)) : Math.max(0, Math.floor((now - start) / 1000));
       const clock = Math.floor(seconds / 60) + '분 ' + String(seconds % 60).padStart(2, '0') + '초';
-      label.textContent = deadline ? (seconds ? '서버 안내 재시도까지 ' + clock : '서버 안내 대기 시간이 지났어요.') : '마지막 발송 제한 응답 후 ' + clock + ' 경과 · 해제 시각 미제공';
+      label.textContent = deadline ? (seconds ? '서버 안내 재시도까지 ' + clock : '서버 안내 대기 시간이 지났어요.') : '최초 발송 제한 후 ' + clock + ' 경과 · 해제 시각 미제공';
       if (deadline && !seconds) clearInterval(counterTimer);
     }
     counterTimer = setInterval(tick, 1000);
@@ -553,7 +559,6 @@
     if (send.disabled) return;
     send.disabled = true;
     retryDeadline = 0;
-    showAuthCounter(0, 0);
 
     try {
       const email = ui.emailInput.value.trim();
@@ -569,11 +574,14 @@
       });
       if (error?.status === 429 || error?.code === 'over_email_send_rate_limit') {
 
-        showAuthCounter(Date.now(), retryDeadline);
+        firstLimitedAt ||= Date.now();
+        if (retryDeadline || knownDeadline <= Date.now()) knownDeadline = retryDeadline;
+        showAuthCounter(firstLimitedAt, knownDeadline);
         status('인증 메일 발송이 일시 제한됐어요. 최근 받은 미사용 링크를 확인하거나 잠시 후 다시 시도해 주세요.', 'warning');
         return;
       }
 
+      if (!error) clearLimit();
       status(error ? '링크 발송 실패: ' + error.message : '로그인 링크를 이메일로 보냈어요.', error ? 'error' : 'success');
     } catch {
       status('메일 발송을 확인하지 못했어요. 네트워크 연결을 확인해 주세요.', 'error');
