@@ -24,7 +24,7 @@
   function activeStorageKey(id) { return CONTENT_KEY + id; }
   function readActiveId() {
     try {
-      const id = localStorage.getItem(ACTIVE_KEY) || DEFAULT_ID;
+      const id = new URL(location.href).searchParams.get('project') || localStorage.getItem(ACTIVE_KEY) || DEFAULT_ID;
       return /^[a-z0-9-]{1,64}$/.test(id) ? id : DEFAULT_ID;
     } catch (e) { return DEFAULT_ID; }
   }
@@ -245,6 +245,9 @@
   function setActive(id) {
     if (!projects.some(p => p.id === id) || id === activeId) return;
     activeId = id;
+    const url = new URL(location.href);
+    url.searchParams.set('project', id);
+    history.replaceState(null, '', url);
     localStorage.setItem(ACTIVE_KEY, id);
     items = loadItems(id);
     editing = null;
@@ -398,7 +401,8 @@
     headerFields.forEach((el,i) => el.textContent = values[i]);
     editHeader.hidden = role === 'viewer';
     if (editHeader.hidden || headerForm.dataset.project !== activeId) closeHeader();
-    if (!projects.some(p => p.id === activeId)) activeId = DEFAULT_ID;
+    const title = document.getElementById('currentProjectName');
+    if (title) title.textContent = projects.find(p => p.id === activeId)?.name || '프로젝트 확인 중';
     projectSelect.replaceChildren();
     for (const project of projects) {
       const option = document.createElement('option');
@@ -464,9 +468,9 @@
   for (const kind of TYPES) {
     ids[kind].form.addEventListener('submit', event => saveItem(event, kind, null));
   }
-  projectSelect.addEventListener('change', () => setActive(projectSelect.value));
+  projectSelect.addEventListener('change', () => { if (role === 'owner') setActive(projectSelect.value); });
   document.getElementById('createProject').addEventListener('click', () => {
-    if (role === 'viewer') return;
+    if (role !== 'owner') return;
     if (projects.length >= MAX_PROJECTS) return alert('최대 30개 프로젝트까지 추가할 수 있어요.');
     const name = prompt('새 프로젝트 이름을 입력하세요.');
     if (!name?.trim()) return;
@@ -478,7 +482,7 @@
     setActive(id);
   });
   document.getElementById('renameProject').addEventListener('click', () => {
-    if (role === 'viewer') return;
+    if (role !== 'owner') return;
     const project = projects.find(p => p.id === activeId);
     if (!project) return;
     const name = prompt('프로젝트 이름', project.name);
@@ -625,7 +629,7 @@
       next.forEach(p => merged.set(p.id, p)); // Cloud names take precedence.
       projects = Array.from(merged.values()).slice(0, MAX_PROJECTS);
       saveProjects();
-      if (!projects.some(p => p.id === activeId)) setActive(DEFAULT_ID);
+      
       render();
     },
     applyRemoteContent(remote) {
