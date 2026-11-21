@@ -20,7 +20,8 @@
     importArea: el('syncImportArea'),
     importButton: el('syncImportLocal'),
     signOut: el('syncSignOut'),
-    refresh: el('syncRefresh')
+    refresh: el('syncRefresh'),
+    copyTeamLink: el('copyTeamLink')
   };
 
   let client = null;
@@ -363,6 +364,18 @@
     });
     status(error ? '링크 발송 실패: ' + error.message : '로그인 링크를 이메일로 보냈어요.', error ? 'error' : 'success');
   });
+  ui.copyTeamLink?.addEventListener('click', async () => {
+    const key = localStorage.getItem(KEY_STORAGE) || '';
+    if (!keyIsPublic(key) || !member) return;
+    const url = new URL(window.location.origin + window.location.pathname);
+    url.searchParams.set('key', key);
+    try {
+      await navigator.clipboard.writeText(url.href);
+      status('팀 접속 링크를 복사했습니다. 초대된 이메일만 로그인할 수 있어요.', 'success');
+    } catch (e) {
+      window.prompt('팀 접속 링크 복사', url.href);
+    }
+  });
   ui.refresh.addEventListener('click', async () => {
     if (!client) return;
     const { data } = await client.auth.getSession();
@@ -418,7 +431,15 @@
   }, 15000);
 
   try {
-    const saved = localStorage.getItem(KEY_STORAGE);
+    const params = new URLSearchParams(window.location.search);
+    const inviteKey = params.get('key');
+    const saved = inviteKey && keyIsPublic(inviteKey)
+      ? inviteKey : localStorage.getItem(KEY_STORAGE);
+    if (inviteKey) {
+      params.delete('key');
+      window.history.replaceState({}, '', window.location.pathname +
+        (params.toString() ? '?' + params.toString() : '') + window.location.hash);
+    }
     if (saved) {
       ui.keyInput.value = saved;
       void connect(saved);
