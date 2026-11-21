@@ -5,6 +5,8 @@
   const PROJECT_URL = 'https://zhoggxeyhowzdrejiazd.supabase.co';
   const KEY_STORAGE = 'lg-u-supabase-publishable-key';
   const board = window.progressBoard;
+  const workspace = window.workspaceBoard;
+  const DEFAULT_PROJECT = 'lg-u-dna';
   const el = id => document.getElementById(id);
   const ui = {
     status: el('syncStatus'),
@@ -30,6 +32,11 @@
   let refreshTimer = null;
   let realtimeChannel = null;
   let authGeneration = 0;
+  let cloudUpgraded = false;
+  let memberRole = 'local';
+  let baselineProjectId = null;
+  let contentBaseline = [];
+  let projectBaseline = [];
 
   const clone = value => JSON.parse(JSON.stringify(value));
   const normalize = snapshot => ({
@@ -96,6 +103,8 @@
     currentSession = session;
     member = false;
     baseline = null;
+    baselineProjectId = null;
+    contentBaseline = [];
     clearTimeout(pushTimer);
     clearTimeout(refreshTimer);
     if (realtimeChannel && client) {
@@ -104,6 +113,9 @@
     }
     ui.importArea.hidden = true;
     if (!session?.user?.id || !client) {
+      memberRole = 'local';
+      board.setRole('local');
+      workspace?.setRole('local');
       ui.emailForm.hidden = false;
       ui.memberArea.hidden = true;
       status('협업자 로그인 필요', 'idle');
@@ -114,7 +126,7 @@
     ui.memberLabel.textContent = session.user.email || '로그인됨';
     status('접근 권한 확인 중…', 'loading');
     const { data, error } = await client.from('progress_members')
-      .select('user_id').eq('user_id', session.user.id).maybeSingle();
+      .select('user_id,role').eq('user_id', session.user.id).maybeSingle();
     if (generation !== authGeneration) return;
     if (error) {
       status('공유 DB 연결 대기: ' + error.message, 'error');
@@ -126,40 +138,87 @@
       return;
     }
     member = true;
+    memberRole = data.role === 'viewer' ? 'viewer' : data.role === 'owner' ? 'owner' : 'editor';
+    board.setRole(memberRole);
+    workspace?.setRole(memberRole);
+    const schemaProbe = await client.from('progress_projects').select('id').limit(1);
+    cloudUpgraded = !schemaProbe.error;
     await pullCloud(true);
     if (generation !== authGeneration) return;
     subscribeRealtime();
   }
 
-  async function remoteSnapshot() {
+  async function remoteSnapshot(projectId) {
+    let taskQuery = client.from('progress_tasks')
+      .select('id,name,assignee,status,progress').order('id');
+    if (cloudUpgraded) taskQuery = taskQuery.eq('project_id', projectId);
     const [tr, pr] = await Promise.all([
-      client.from('progress_tasks').select('id,name,assignee,status,progress').order('id'),
+      taskQuery,
       client.from('progress_people').select('name,color').order('name')
     ]);
     if (tr.error) throw tr.error;
     if (pr.error) throw pr.error;
     return normalize({ tasks: tr.data || [], people: pr.data || [] });
   }
+  async function remoteWorkspace(projectId) {
+    if (!cloudUpgraded || !workspace) return { projects: [], content: [] };
+    const [p, c] = await Promise.all([
+      client.from('progress_projects').select('id,name').order('created_at'),
+      client.from('progress_content')
+        .select('id,kind,title,url,body,category,completed,sort_order')
+        .eq('project_id', projectId).order('sort_order')
+    ]);
+    if (p.error) throw p.error;
+    if (c.error) throw c.error;
+    return { projects: p.data || [], content: c.data || [] };
+  }
 
   async function pullCloud(first = false) {
     if (!member || !currentSession || !client) return;
+    const projectId = board.getActiveProjectId();
+    const generation = authGeneration;
+    if (!cloudUpgraded && projectId !== DEFAULT_PROJECT) {
+      baseline = null;
+      baselineProjectId = null;
+      status('다른 프로젝트는 현재 브라우저에만 저장돼요 · 공유 DB 확장 필요', 'warning');
+      return;
+    }
     if (pushRunning || pushTimer) {
       schedulePull();
       return;
     }
     try {
-      const cloud = await remoteSnapshot();
-      if (!member) return;
-      const initialEmpty = first && cloud.tasks.length === 0;
+      const [cloud, extras] = await Promise.all([
+        remoteSnapshot(projectId),
+        remoteWorkspace(projectId)
+      ]);
+      if (!member || projectId !== board.getActiveProjectId() || generation !== authGeneration) return;
       baseline = clone(cloud);
-      if (initialEmpty) {
+      baselineProjectId = projectId;
+      contentBaseline = clone(extras.content);
+      projectBaseline = clone(extras.projects);
+      if (cloudUpgraded && workspace) {
+        workspace.loadCloudProjects(extras.projects);
+        const localContent = workspace.getSnapshot();
+        if (extras.content.length || localContent.length === 0) {
+          workspace.applyRemoteContent(extras.content);
+        }
+      }
+      const hasLocalTasks = board.getSnapshot().tasks.length > 0;
+      const hasLocalContent = !!workspace?.getSnapshot().length;
+      const needsTaskImport = cloud.tasks.length === 0 && hasLocalTasks;
+      const needsContentImport = cloudUpgraded && extras.content.length === 0 && hasLocalContent;
+      if (needsTaskImport || needsContentImport) {
         ui.importArea.hidden = false;
-        status('공유 DB 준비 완료 · 최초 작업 업로드 필요', 'warning');
+        status('공유 데이터 준비 완료 · 브라우저 작업 이전 가능', 'warning');
+        if (!needsTaskImport) board.applyRemoteSnapshot(cloud);
         return;
       }
       ui.importArea.hidden = true;
       board.applyRemoteSnapshot(cloud);
-      status('공유 데이터 자동 동기화 중', 'success');
+      status(cloudUpgraded
+        ? '프로젝트 작업·자료 자동 동기화 중'
+        : '작업 진행률 동기화 중 · 자료실은 현재 브라우저에 저장', 'success');
     } catch (e) {
       status('공유 데이터 불러오기 실패: ' + e.message, 'error');
     }
@@ -174,25 +233,41 @@
     };
   }
   function schedulePush() {
-    if (!member || !baseline) return;
+    if (!member || memberRole === 'viewer' || !baseline ||
+        baselineProjectId !== board.getActiveProjectId()) return;
     clearTimeout(pushTimer);
     pushTimer = setTimeout(() => { pushTimer = null; pushCloud(); }, 650);
     status('변경 사항 저장 중…', 'loading');
   }
   async function pushCloud() {
-    if (!member || !baseline || pushRunning) return;
+    if (!member || memberRole === 'viewer' || !baseline || pushRunning) return;
+    const projectId = board.getActiveProjectId();
+    if (baselineProjectId !== projectId || (!cloudUpgraded && projectId !== DEFAULT_PROJECT)) return;
     pushRunning = true;
     const local = normalize(board.getSnapshot());
+    const localContent = cloudUpgraded && workspace ? workspace.getSnapshot() : [];
     const taskDelta = changedRows(local.tasks, baseline.tasks, 'id');
     const peopleDelta = changedRows(local.people, baseline.people, 'name');
+    const contentDelta = changedRows(localContent, contentBaseline, 'id');
     try {
-      // Send only changed records so simultaneous edits to different tasks do not overwrite each other.
+      if (cloudUpgraded && workspace) {
+        const project = workspace.getProjects().find(p => p.id === projectId);
+        if (!project) throw new Error('현재 프로젝트를 찾을 수 없습니다.');
+        const result = await client.from('progress_projects').upsert(project, { onConflict: 'id' });
+        if (result.error) throw result.error;
+      }
+      // Diff updates avoid overwriting unrelated tasks edited by another collaborator.
       if (taskDelta.put.length) {
-        const { error } = await client.from('progress_tasks').upsert(taskDelta.put, { onConflict: 'id' });
+        const rows = cloudUpgraded
+          ? taskDelta.put.map(t => ({ ...t, project_id: projectId }))
+          : taskDelta.put;
+        const { error } = await client.from('progress_tasks').upsert(rows, { onConflict: 'id' });
         if (error) throw error;
       }
       if (taskDelta.removed.length) {
-        const { error } = await client.from('progress_tasks').delete().in('id', taskDelta.removed);
+        let query = client.from('progress_tasks').delete().in('id', taskDelta.removed);
+        if (cloudUpgraded) query = query.eq('project_id', projectId);
+        const { error } = await query;
         if (error) throw error;
       }
       if (peopleDelta.put.length) {
@@ -203,17 +278,34 @@
         const { error } = await client.from('progress_people').delete().in('name', peopleDelta.removed);
         if (error) throw error;
       }
-      baseline = clone(local);
+      if (cloudUpgraded) {
+        if (contentDelta.put.length) {
+          const rows = contentDelta.put.map(item => ({ ...item, project_id: projectId }));
+          const { error } = await client.from('progress_content').upsert(rows, { onConflict: 'id' });
+          if (error) throw error;
+        }
+        if (contentDelta.removed.length) {
+          const { error } = await client.from('progress_content')
+            .delete().eq('project_id', projectId).in('id', contentDelta.removed);
+          if (error) throw error;
+        }
+      }
+      if (board.getActiveProjectId() === projectId) {
+        baseline = clone(local);
+        contentBaseline = clone(localContent);
+      }
       status('클라우드 저장 완료', 'success');
-      // Fetch again to merge any edits other people made during the upload.
       schedulePull();
     } catch (e) {
       status('자동 저장 실패: ' + e.message, 'error');
     } finally {
       pushRunning = false;
-      // Handle edits that arrived while the previous request was in flight.
-      const now = normalize(board.getSnapshot());
-      if (JSON.stringify(now) !== JSON.stringify(local)) schedulePush();
+      if (board.getActiveProjectId() === projectId) {
+        const now = normalize(board.getSnapshot());
+        const currentContent = cloudUpgraded && workspace ? workspace.getSnapshot() : [];
+        if (JSON.stringify(now) !== JSON.stringify(local) ||
+            JSON.stringify(currentContent) !== JSON.stringify(localContent)) schedulePush();
+      }
     }
   }
   function schedulePull() {
@@ -232,8 +324,17 @@
         schedulePull)
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'progress_people' },
-        schedulePull)
-      .subscribe();
+        schedulePull);
+    if (cloudUpgraded) {
+      realtimeChannel
+        .on('postgres_changes',
+          { event: '*', schema: 'public', table: 'progress_content' },
+          schedulePull)
+        .on('postgres_changes',
+          { event: '*', schema: 'public', table: 'progress_projects' },
+          schedulePull);
+    }
+    realtimeChannel.subscribe();
   }
 
   ui.keyForm.addEventListener('submit', async event => {
@@ -266,11 +367,35 @@
     if (!member || !client) return;
     if (!window.confirm('현재 브라우저의 작업 데이터를 팀 공유 데이터베이스에 업로드할까요?')) return;
     baseline = { tasks: [], people: [] };
+    baselineProjectId = board.getActiveProjectId();
+    if (cloudUpgraded) contentBaseline = [];
     ui.importArea.hidden = true;
     await pushCloud();
   });
 
   window.addEventListener('progress-board:changed', schedulePush);
+  window.addEventListener('workspace:changed', schedulePush);
+  window.addEventListener('workspace:projectchanged', () => {
+    clearTimeout(pushTimer);
+    clearTimeout(refreshTimer);
+    baseline = null;
+    baselineProjectId = null;
+    contentBaseline = [];
+    ui.importArea.hidden = true;
+    if (member) void pullCloud(true);
+  });
+  window.addEventListener('workspace:projects-changed', event => {
+    if (!cloudUpgraded || !member || memberRole === 'viewer') return;
+    const project = event.detail?.project;
+    if (!project?.id || !project?.name) return;
+    // Project creation/renames are small, independent updates.
+    void client.from('progress_projects').upsert(
+      { id: project.id, name: project.name }, { onConflict: 'id' }
+    ).then(({ error }) => {
+      if (error) status('프로젝트 저장 실패: ' + error.message, 'error');
+      else schedulePull();
+    });
+  });
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible' && member) schedulePull();
   });
