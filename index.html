@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="./styles.css?v=row-drag-9">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
   <script src="./app.js?v=project-links-12" defer></script>
-  <script src="./workspace.js?v=project-title-13" defer></script>
+  <script src="./workspace.js?v=project-title-14" defer></script>
   <script src="./sync.js?v=project-links-12" defer></script>
   <style>
     html:not(.verified-board-owner) :is(.people-panel,.sync-panel,.workspace-data-actions,.toolbar),
@@ -23,6 +23,10 @@
     #projectAdmin summary { cursor:pointer; width:fit-content; }
     .project-admin-tools { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:10px; }
     html:not(.verified-board-owner) :is(#editHeader,#headerForm) { display:none!important; }
+    .masthead h1, #currentProjectName {
+      font-family: Pretendard, system-ui, "Apple SD Gothic Neo", "Malgun Gothic", "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+      word-break:keep-all; overflow-wrap:anywhere; line-height:1.22;
+    }
   </style>
 </head>
 <body>
