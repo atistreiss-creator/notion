@@ -360,3 +360,5 @@
 #headerForm{grid-template-columns:1fr;margin:12px 0}
 #headerForm label{display:grid;gap:5px;color:#bcb8ce;font-size:12px}
 @media(max-width:680px){.workspace-group summary{grid-template-columns:minmax(0,1fr)}}
+
+.workspace-item-list .inline-editor{margin:0;padding:14px 0 18px;border-bottom:1px solid #34364b}
