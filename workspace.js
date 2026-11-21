@@ -6,7 +6,7 @@
   const DEFAULT_ID = 'lg-u-dna';
   const MAX_PROJECTS = 30;
   const MAX_ITEMS = 250;
-  const TYPES = ['resource', 'checklist', 'feedback', 'reference'];
+  const TYPES = ['note', 'resource', 'checklist', 'feedback', 'reference'];
   const ids = Object.fromEntries(TYPES.map(type => [type, {
     list: document.getElementById(type + 'List'),
     form: document.getElementById(type + 'Form'),
@@ -213,7 +213,7 @@
     const button = form.querySelector('button[type="submit"]');
     if (button) {
       const labels = {
-        resource: '+ 자료 추가', checklist: '+ 할 일 추가',
+        note: '+ 메모 추가', resource: '+ 자료 추가', checklist: '+ 할 일 추가',
         feedback: '+ 피드백 추가', reference: '+ 레퍼런스 추가'
       };
       button.textContent = labels[form.id.replace('Form','')] || '+ 추가';
