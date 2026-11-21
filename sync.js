@@ -520,7 +520,7 @@
     const send = ui.emailForm.querySelector('button[type="submit"]');
     if (send.disabled) return;
     send.disabled = true;
-    let cooldown = false;
+
     try {
       const email = ui.emailInput.value.trim();
       status('이메일 로그인 링크 발송 중…', 'loading');
@@ -534,19 +534,16 @@
         options: { emailRedirectTo: redirect, shouldCreateUser: ownerEmail }
       });
       if (error?.status === 429 || error?.code === 'over_email_send_rate_limit') {
-        cooldown = true;
+
         status('인증 메일 발송이 일시 제한됐어요. 최근 받은 미사용 링크를 확인하거나 잠시 후 다시 시도해 주세요.', 'warning');
         return;
       }
-      cooldown = !error;
+
       status(error ? '링크 발송 실패: ' + error.message : '로그인 링크를 이메일로 보냈어요.', error ? 'error' : 'success');
     } catch {
       status('메일 발송을 확인하지 못했어요. 네트워크 연결을 확인해 주세요.', 'error');
     } finally {
-      if (cooldown) {
-        send.textContent = '재요청 대기 중';
-        setTimeout(() => { send.disabled = false; send.textContent = '로그인 링크 받기'; }, 60000);
-      } else send.disabled = false;
+      send.disabled = false;
     }
   });
   el('copyProjectLink')?.addEventListener('click', () => ui.copyTeamLink.click());
