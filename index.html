@@ -6,14 +6,33 @@
   <meta name="color-scheme" content="dark">
   <meta name="description" content="영상 제작 진행률을 관리하는 드래그형 작업 보드">
   <title>영상 제작 · 진행 관리</title>
-  <link rel="stylesheet" href="./styles.css?v=dna-toggle-3">
+  <link rel="stylesheet" href="./styles.css?v=dna-header-4">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
   <script src="./app.js?v=20261122-6" defer></script>
-  <script src="./workspace.js?v=dna-toggle-3" defer></script>
+  <script src="./workspace.js?v=dna-header-4" defer></script>
   <script src="./sync.js?v=20261122-6" defer></script>
 </head>
 <body>
   <main class="workspace">
+
+
+    <header class="masthead">
+      <div class="masthead-copy">
+        <span class="eyebrow">PRODUCTION / WORKFLOW</span>
+        <h1>영상 제작 진행 현황</h1>
+        <p>작업명을 수정하고 담당자를 지정한 다음, 슬라이더를 움직여 진행률을 기록하세요.</p>
+        <button type="button" class="workspace-small-button" id="editHeader" aria-controls="headerForm" aria-expanded="false">헤드타이틀 수정</button>
+        <form id="headerForm" class="workspace-add-form" hidden>
+          <label>영문 라벨<input class="meta-input" name="label" maxlength="60"></label>
+          <label>제목<input class="meta-input" name="title" maxlength="160" required></label>
+          <label>설명<textarea class="workspace-textarea" name="body" maxlength="1500"></textarea></label>
+          <button class="button button-outline">수정 저장</button>
+        </form>
+      </div>
+      <span class="mode-pill" id="modePill"><span class="mode-dot"></span><span id="modeLabel">로컬 저장 모드</span></span>
+    </header>
+
+
     <section class="project-switcher" aria-label="프로젝트 선택">
       <div class="project-choice">
         <label class="field-label" for="projectSelect">현재 프로젝트</label>
@@ -24,16 +43,6 @@
       <button class="button button-outline" id="createProject" type="button">+ 새 프로젝트</button>
       <button class="button button-outline" id="renameProject" type="button">이름 변경</button>
     </section>
-
-    <header class="masthead">
-      <div class="masthead-copy">
-        <span class="eyebrow">PRODUCTION / WORKFLOW</span>
-        <h1>영상 제작 진행 현황</h1>
-        <p>작업명을 수정하고 담당자를 지정한 다음, 슬라이더를 움직여 진행률을 기록하세요.</p>
-      </div>
-      <span class="mode-pill" id="modePill"><span class="mode-dot"></span><span id="modeLabel">로컬 저장 모드</span></span>
-    </header>
-
 
     <section class="overview" aria-label="전체 진행 현황">
       <div class="overview-top">
@@ -143,27 +152,27 @@
       <details class="workspace-group">
         <summary><span><span class="workspace-icon">▤</span> 프로젝트 브리프 · 메모 <small id="noteCount">0개</small></span><span class="workspace-hint">목표 · 방향 · 확정/미확정 사항</span></summary>
         <div id="noteList" class="workspace-item-list"></div>
-        <form id="noteForm" class="workspace-add-form">
+        <details id="noteEditor"><summary>+ 메모 추가</summary><form id="noteForm" class="workspace-add-form">
           <input name="title" class="meta-input" maxlength="160" placeholder="메모 제목" aria-label="메모 제목" required>
           <textarea name="body" class="workspace-textarea" maxlength="1500" rows="3" placeholder="프로젝트 개요나 주요 의사결정을 기록하세요" aria-label="프로젝트 메모"></textarea>
           <button type="submit" class="button button-outline">+ 메모 추가</button>
-        </form>
+        </form></details>
       </details>
 
       <details class="workspace-group" open>
         <summary><span><span class="workspace-icon">↗</span> 공유 자료 <small id="resourceCount">0개</small></span><span class="workspace-hint">Drive · 산출물 · 참고 파일</span></summary>
         <div id="resourceList" class="workspace-item-list"></div>
-        <form id="resourceForm" class="workspace-add-form">
+        <details id="resourceEditor"><summary>+ 자료 추가</summary><form id="resourceForm" class="workspace-add-form">
           <input name="title" class="meta-input" maxlength="120" placeholder="자료 이름" aria-label="자료 이름" required>
           <input name="url" class="meta-input" type="url" placeholder="https://drive.google.com/..." aria-label="자료 URL" required>
           <button type="submit" class="button button-outline">+ 자료 추가</button>
-        </form>
+        </form></details>
       </details>
 
       <details class="workspace-group">
         <summary><span><span class="workspace-icon">✓</span> 제작 체크리스트 <small id="checklistCount">0개</small></span><span class="workspace-hint">준비 · 제작 · 최종 검수</span></summary>
         <div id="checklistList" class="workspace-item-list"></div>
-        <form id="checklistForm" class="workspace-add-form">
+        <details id="checklistEditor"><summary>+ 할 일 추가</summary><form id="checklistForm" class="workspace-add-form">
           <select name="category" class="meta-select" aria-label="체크리스트 분류">
             <option value="협업 준비">협업 준비</option>
             <option value="연출·제작">연출·제작</option>
@@ -172,17 +181,17 @@
           </select>
           <input name="title" class="meta-input" maxlength="160" placeholder="할 일 추가" aria-label="할 일" required>
           <button type="submit" class="button button-outline">+ 할 일 추가</button>
-        </form>
+        </form></details>
       </details>
 
       <details class="workspace-group">
         <summary><span><span class="workspace-icon">✎</span> 피드백 · 의사결정 <small id="feedbackCount">0개</small></span><span class="workspace-hint">피드백과 확정 사항 기록</span></summary>
         <div id="feedbackList" class="workspace-item-list"></div>
-        <form id="feedbackForm" class="workspace-add-form">
+        <details id="feedbackEditor"><summary>+ 피드백 추가</summary><form id="feedbackForm" class="workspace-add-form">
           <input name="title" class="meta-input" maxlength="160" placeholder="안건" aria-label="피드백 안건" required>
           <textarea name="body" class="workspace-textarea" maxlength="1500" rows="2" placeholder="수정 요청 · 결정 사항" aria-label="수정 요청 또는 결정 사항" required></textarea>
           <button type="submit" class="button button-outline">+ 피드백 추가</button>
-        </form>
+        </form></details>
       </details>
 
 
