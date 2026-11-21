@@ -37,6 +37,31 @@
       </div>
     </section>
 
+    <section class="people-panel" aria-label="작업자 관리">
+      <div class="people-heading">
+        <div>
+          <h2>작업자 관리</h2>
+          <p>담당자를 미리 등록해 두면 각 작업의 선택 메뉴에서 바로 지정할 수 있어요.</p>
+        </div>
+      </div>
+      <div id="peopleList" class="people-list" aria-label="등록된 작업자"></div>
+      <form id="addPersonForm" class="people-add-form" autocomplete="off">
+        <label class="field-label" for="newPersonName">작업자 추가</label>
+        <div class="people-add-row">
+          <input id="newPersonName" class="meta-input people-name-input" type="text" maxlength="60" placeholder="새 작업자 이름" required aria-label="새 작업자 이름">
+          <select id="newPersonColor" class="meta-select people-color-select" aria-label="새 작업자 색상">
+            <option value="purple">보라색</option>
+            <option value="teal">청록색</option>
+            <option value="pink">분홍색</option>
+            <option value="blue">파란색</option>
+            <option value="yellow">노란색</option>
+            <option value="gray">회색</option>
+          </select>
+          <button class="button button-outline people-add-button" type="submit">+ 추가</button>
+        </div>
+      </form>
+    </section>
+
     <section class="board" aria-label="작업 분담 및 진행률">
       <div class="board-head">
         <div>
@@ -71,7 +96,7 @@
     <article class="task-card">
       <div class="card-top">
         <div class="title-field">
-          <label class="field-label">작업명 <span class="edit-hint">수정 가능</span></label>
+          <label class="field-label">작업명</label>
           <input type="text" maxlength="100" class="title-input" data-field="name" placeholder="작업명을 입력하세요" aria-label="작업명">
         </div>
         <button class="icon-button delete-button" data-action="delete" type="button" aria-label="작업 삭제" title="작업 삭제">×</button>
@@ -79,7 +104,7 @@
       <div class="meta-grid">
         <div class="meta-field">
           <label class="field-label">담당자</label>
-          <input class="meta-input" data-field="assignee" type="text" maxlength="60" placeholder="담당자 입력" aria-label="담당자">
+          <select class="meta-select assignee-select" data-field="assignee" aria-label="담당자"><option value="">미지정</option></select>
         </div>
         <div class="meta-field">
           <label class="field-label">진행 상태</label>
