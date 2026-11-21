@@ -318,7 +318,10 @@
         .map(p => ({ id: p.id, name: p.name.slice(0, 100) }));
       if (!next.some(p => p.id === DEFAULT_ID))
         next.unshift({ id: DEFAULT_ID, name: 'LG U+ 1등 DNA 시상식' });
-      projects = next.slice(0, MAX_PROJECTS);
+      // Preserve projects created in this browser until an editor can upload them.
+      const merged = new Map(projects.map(p => [p.id, p]));
+      next.forEach(p => merged.set(p.id, p)); // Cloud names take precedence.
+      projects = Array.from(merged.values()).slice(0, MAX_PROJECTS);
       saveProjects();
       if (!projects.some(p => p.id === activeId)) setActive(DEFAULT_ID);
       render();
