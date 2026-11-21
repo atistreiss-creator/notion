@@ -279,6 +279,74 @@
     a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(href), 750);
   });
+  function stripMarkup(value) {
+    return String(value || '').replace(/<[^>]*>/g, '')
+      .replace(/\*\*/g, '').replace(/\\\\~/g, '~').trim();
+  }
+  function stableImportId(kind, title, url = '') {
+    let hash = 2166136261;
+    const value = kind + '\0' + title + '\0' + url;
+    for (let i = 0; i < value.length; i++) {
+      hash ^= value.charCodeAt(i);
+      hash = Math.imul(hash, 16777619);
+    }
+    return 'notion-' + kind + '-' + (hash >>> 0).toString(16);
+  }
+  function parseNotionMarkdown(raw) {
+    const result = [];
+    let part = '', category = '', brief = [];
+    function add(kind, title, url = '', body = '', categoryValue = '', completed = false) {
+      const cleanedTitle = stripMarkup(title).slice(0, 160);
+      if (!cleanedTitle) return;
+      const safe = sanitizeItem({
+        id: stableImportId(kind, cleanedTitle, url),
+        kind, title: cleanedTitle, url, body: stripMarkup(body).slice(0, 1500),
+        category: categoryValue, completed, sort_order: result.length
+      }, result.length);
+      if (safe && !result.some(x => x.id === safe.id)) result.push(safe);
+    }
+    const lines = String(raw).split(/\r?\n/);
+    for (const line of lines) {
+      const trimmed = line.trim();
+      const header = trimmed.match(/^#{1,6}\s+(.+)$/);
+      const text = stripMarkup(header ? header[1] : trimmed);
+      if (/^(?:0?[1-5])\.\s/.test(text)) {
+        part = text.match(/^0?([1-5])\./)[1];
+        category = '';
+        continue;
+      }
+      if (header && part === '4' &&
+          /^(협업 준비|연출·제작|최종 검수|기타)/.test(text)) {
+        category = text; continue;
+      }
+      if (part === '1') {
+        const link = trimmed.match(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/);
+        if (link && !/notion\.so|app\.notion\.com/.test(link[2])) {
+          const prefix = stripMarkup(trimmed.slice(0, link.index))
+            .replace(/^[-*]\s*/, '').replace(/:$/, '').trim();
+          add('resource', prefix ? prefix + ' · ' + link[1] : link[1], link[2]);
+        }
+      } else if (part === '4') {
+        const check = trimmed.match(/^[-*]\s*\[([ xX])\]\s*(.+)$/);
+        if (check) add('checklist', check[2], '', '', category || '기타',
+          check[1].toLowerCase() === 'x');
+      } else if (part === '5') {
+        const reference = trimmed.match(/^\d+\.\s+\[([^\]]+)\]\((https?:\/\/[^)]+)\)\s*(?:[—–-]\s*(.*))?/);
+        if (reference) add('reference', reference[1], reference[2], reference[3] || '');
+        else if (trimmed && !header && !/^---|^<p\s*\/>/.test(trimmed)) {
+          brief.push(text);
+        }
+      } else if (part === '3' && trimmed.startsWith('|')) {
+        const cells = trimmed.split('|').slice(1,-1).map(stripMarkup);
+        if (cells.length >= 4 && cells[1] && !/^-+$/.test(cells[1]) && cells[1] !== '안건') {
+          add('feedback', cells[1], '', [cells[0], cells[2], cells[3]]
+            .filter(Boolean).join(' · '));
+        }
+      }
+    }
+    if (brief.length) add('note', '노션에서 가져온 프로젝트 연출 브리프', '', brief.join('\n'));
+    return result;
+  }
   document.getElementById('importWorkspace').addEventListener('click', () => {
     if (role === 'viewer') return;
     document.getElementById('workspaceImportFile').click();
@@ -289,19 +357,32 @@
     if (!file || role === 'viewer') return;
     if (file.size > 300000) return alert('자료 파일은 300KB 이하여야 해요.');
     try {
-      const data = JSON.parse(await file.text());
-      if (!data || data.version !== 1 || !Array.isArray(data.items) ||
-          data.items.length > MAX_ITEMS) throw new Error('유효하지 않은 자료 파일입니다.');
-      const imported = data.items.map(sanitizeItem);
-      if (imported.some(x => !x)) throw new Error('지원하지 않는 항목 형식입니다.');
+      const text = await file.text();
+      let imported;
+      if (/\.(?:md|markdown|txt)$/i.test(file.name) && !text.trimStart().startsWith('{')) {
+        imported = parseNotionMarkdown(text);
+      } else {
+        const data = JSON.parse(text);
+        if (!data || data.version !== 1 || !Array.isArray(data.items) ||
+            data.items.length > MAX_ITEMS) throw new Error('유효하지 않은 자료 파일입니다.');
+        imported = data.items.map(sanitizeItem);
+        if (imported.some(x => !x)) throw new Error('지원하지 않는 항목 형식입니다.');
+      }
+      if (!imported.length) throw new Error('가져올 노션 자료를 찾지 못했습니다. 전체 페이지를 Markdown으로 내보내 주세요.');
       if (!confirm('이 프로젝트에 ' + imported.length + '개 자료를 가져올까요? 기존 자료는 보존합니다.')) return;
       const byId = new Map(items.map(x => [x.id, x]));
+      const uniqueItems = new Set(items.map(x => x.kind + '|' + x.title + '|' + x.url));
       imported.forEach(x => {
-        if (!byId.has(x.id)) byId.set(x.id, x);
+        const key = x.kind + '|' + x.title + '|' + x.url;
+        if (!byId.has(x.id) && !uniqueItems.has(key) && byId.size < MAX_ITEMS) {
+          byId.set(x.id, x);
+          uniqueItems.add(key);
+        }
       });
+      const added = byId.size - items.length;
       items = Array.from(byId.values()).slice(0, MAX_ITEMS);
       persist(); render();
-      alert(imported.length + '개 항목을 확인해 가져왔습니다.');
+      alert(added + '개 새 자료를 가져왔습니다. 기존 자료는 유지했습니다.');
     } catch (error) { alert('가져오기에 실패했습니다: ' + error.message); }
   });
 
