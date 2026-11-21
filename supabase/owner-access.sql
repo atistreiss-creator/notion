@@ -35,20 +35,20 @@ revoke all on function public.progress_set_access(text,text) from public,anon;
 grant execute on function public.progress_set_access(text,text) to authenticated;
 -- Bind administrative functions to the verified owner, including after an email change.
 create or replace function public.progress_is_designated_owner() returns boolean
-language sql stable security definer set search_path='' as $
+language sql stable security definer set search_path='' as $owner$
  select exists(select 1 from auth.users where id=auth.uid() and email_confirmed_at is not null
  and pg_catalog.encode(pg_catalog.sha256(pg_catalog.convert_to(lower(email),'UTF8')),'hex')='f0feb7997eb349986eefe36b3048ec6111145eb42b68cbcc87322709c8a11cf1')
-$;
+$owner$;
 revoke all on function public.progress_is_designated_owner() from public,anon;
 grant execute on function public.progress_is_designated_owner() to authenticated;
 create or replace function public.progress_claim_owner() returns boolean
-language plpgsql security definer set search_path='' as $
+language plpgsql security definer set search_path='' as $owner$
 begin
  if not public.progress_is_designated_owner() then return false; end if;
  insert into public.progress_members(user_id,role) values(auth.uid(),'owner')
  on conflict(user_id) do update set role='owner';
  return true;
-end $;
+end $owner$;
 revoke all on function public.progress_claim_owner() from public,anon;
 grant execute on function public.progress_claim_owner() to authenticated;
 create table if not exists public.progress_layout(project_id text not null, group_name text not null
