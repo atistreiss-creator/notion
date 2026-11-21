@@ -55,7 +55,7 @@ function sanitizedTask(t, index) {
   return {
     id: typeof t.id === 'string' && t.id.length <= 100 ? t.id : 'import-' + index,
     name: String(t.name ?? '새 작업').trim().slice(0, 100) || '새 작업',
-    assignee: String(t.assignee ?? '').trim().slice(0, 60),
+    assignee: encodeAssignees(assigneeNames(t.assignee)),
     status: STATUSES.has(t.status) ? t.status : '예정',
     progress: Number.isFinite(n) ? Math.min(100, Math.max(0, Math.round(n))) : 0
   };
@@ -94,9 +94,9 @@ function readPeople() {
 function reconcileAssignees() {
   // Keep previously typed assignees from v1; never silently discard names.
   let changed = false;
-  tasks.forEach(task => {
-    if (task.assignee && !people.some(p => p.name === task.assignee) && people.length < MAX_PEOPLE) {
-      people.push({ name: task.assignee, color: 'gray' });
+  tasks.flatMap(task => assigneeNames(task.assignee)).forEach(name => {
+    if (name && !people.some(p => p.name === name) && people.length < MAX_PEOPLE) {
+      people.push({ name, color: 'gray' });
       changed = true;
     }
   });
@@ -142,19 +142,44 @@ function refreshProgress(card, task) {
   card.querySelector('.slider-fill').style.width = task.progress + '%';
   card.querySelector('.progress-slider').value = String(task.progress);
 }
-function fillAssigneeMenu(select, selected) {
-  select.replaceChildren();
-  const blank = document.createElement('option');
-  blank.value = '';
-  blank.textContent = '미지정';
-  select.appendChild(blank);
-  for (const person of people) {
-    const option = document.createElement('option');
-    option.value = person.name;
-    option.textContent = person.name;
-    select.appendChild(option);
+function assigneeNames(value) {
+  if (!value || typeof value !== 'string') return [];
+  if (value.startsWith('[')) {
+    try {
+      const names = JSON.parse(value);
+      if (Array.isArray(names)) return [...new Set(names.filter(x => typeof x === 'string' && x.trim()).map(x => x.trim().slice(0,60)))].slice(0, MAX_PEOPLE);
+    } catch { /* Legacy single name. */ }
   }
-  select.value = selected;
+  return [value.trim().slice(0,60)].filter(Boolean);
+}
+function encodeAssignees(names) {
+  return names.length > 1 || names[0]?.startsWith('[') ? JSON.stringify(names) : names[0] || '';
+}
+function fillAssigneeMenu(menu, task, card) {
+  let selected = assigneeNames(task.assignee);
+  const summary = menu.querySelector('summary');
+  const refresh = () => {
+    summary.textContent = selected.join(', ') || '미지정';
+    summary.setAttribute('aria-label', '담당자 ' + summary.textContent);
+    updateCardAssignee(card, selected[0]);
+  };
+  refresh();
+  for (const name of new Set([...people.map(p => p.name), ...selected])) {
+    const label = document.createElement('label');
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.checked = selected.includes(name);
+    input.disabled = role === 'viewer';
+    input.addEventListener('change', () => {
+      selected = selected.filter(x => x !== name);
+      if (input.checked) selected.push(name);
+      task.assignee = encodeAssignees(selected);
+      refresh();
+      saveTasks();
+    });
+    label.append(input, document.createTextNode(name));
+    menu.appendChild(label);
+  }
 }
 function updateCardAssignee(card, name) {
   const person = people.find(p => p.name === name);
@@ -180,13 +205,13 @@ function renderPeople() {
     del.setAttribute('aria-label', person.name + ' 작업자 삭제');
     del.title = person.name + ' 삭제';
     del.addEventListener('click', () => {
-      const assigned = tasks.filter(t => t.assignee === person.name).length;
+      const assigned = tasks.filter(t => assigneeNames(t.assignee).includes(person.name)).length;
       const message = assigned
-        ? person.name + ' 작업자를 삭제할까요? 이 담당자로 지정된 ' + assigned + '개 작업은 미지정으로 변경됩니다.'
+        ? person.name + ' 작업자를 삭제할까요? 이 담당자로 지정된 ' + assigned + '개 작업에서 이 이름이 빠집니다.'
         : person.name + ' 작업자를 삭제할까요?';
       if (!window.confirm(message)) return;
       people = people.filter(p => p !== person);
-      if (assigned) tasks.forEach(t => { if (t.assignee === person.name) t.assignee = ''; });
+      if (assigned) tasks.forEach(t => { t.assignee = encodeAssignees(assigneeNames(t.assignee).filter(name => name !== person.name)); });
       savePeople();
       saveTasks();
       render();
@@ -210,14 +235,12 @@ function makeCard(task) {
   const status = card.querySelector('[data-field="status"]');
   const slider = card.querySelector('[data-field="progress"]');
   title.value = task.name;
-  fillAssigneeMenu(assignee, task.assignee);
-  updateCardAssignee(card, task.assignee);
+  fillAssigneeMenu(assignee, task, card);
   status.value = task.status;
   card.dataset.status = task.status;
   refreshProgress(card, task);
   if (role === 'viewer') {
     title.disabled = true;
-    assignee.disabled = true;
     status.disabled = true;
     slider.disabled = true;
     card.querySelector('[data-action="delete"]').hidden = true;
@@ -230,11 +253,6 @@ function makeCard(task) {
   title.addEventListener('blur', () => {
     task.name = title.value.trim() || '새 작업';
     title.value = task.name;
-    saveTasks();
-  });
-  assignee.addEventListener('change', () => {
-    task.assignee = assignee.value;
-    updateCardAssignee(card, task.assignee);
     saveTasks();
   });
   status.addEventListener('change', () => {
