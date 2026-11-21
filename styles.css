@@ -365,3 +365,11 @@
 
 .assignee-menu summary{align-content:center;min-height:41px;height:auto;padding-block:9px;overflow-wrap:anywhere;cursor:pointer}
 .assignee-menu label{display:flex;align-items:center;gap:8px;padding:7px 12px;cursor:pointer;font-size:13px}
+
+#accessDialog{box-sizing:border-box;width:min(420px,calc(100vw - 32px));padding:24px;border:1px solid #504661;border-radius:16px;background:#202135;color:#f6f2ff;text-align:left}
+#accessDialog::backdrop{background:#080813ad}
+#accessHeading{margin:0;font-size:21px;line-height:1.35;letter-spacing:-.035em}
+#accessInfo{margin:10px 0 20px;color:#c5c0d0;font-size:14px;line-height:1.65;word-break:keep-all;overflow-wrap:anywhere}
+#accessForm{display:grid;gap:12px;margin-bottom:14px}
+#accessForm label{display:grid;gap:5px;font-size:13px}
+.access-footer{margin:0;display:flex;align-items:center;justify-content:flex-end;gap:8px}
