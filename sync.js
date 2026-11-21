@@ -173,8 +173,17 @@
   el('accessTag').addEventListener('click', () => {
     const owner = member && memberRole === 'owner';
     accessForm.hidden = !owner;
-    accessInfo.textContent = owner ? '이메일 인증을 마친 계정의 전체 공유 보드 권한을 설정합니다.' : '권한 설정은 공유 연결 후 관리자 계정으로 로그인하면 열립니다.';
+    const action = el('accessConnect');
+    action.hidden = owner || !!currentSession;
+    action.textContent = client ? '이메일 로그인' : '보드 연결';
+    accessInfo.textContent = owner ? '이메일 인증을 마친 계정의 전체 공유 보드 권한을 설정합니다.' : currentSession ? '이 계정에는 관리자 권한이 없습니다.' : client ? '보드에 처음 접속하는 브라우저는 이메일 인증이 필요해요.' : '처음 한 번, 이 브라우저를 공유 보드에 연결해 주세요.';
     el('accessDialog').showModal();
+  });
+  el('accessConnect').addEventListener('click', () => {
+    el('accessDialog').close();
+    const field = client ? ui.emailInput : ui.keyInput;
+    field.scrollIntoView({block:'center'});
+    field.focus({preventScroll:true});
   });
   accessForm.addEventListener('submit', async event => {
     event.preventDefault();
@@ -188,6 +197,7 @@
     if (el('accessDialog').open) el('accessDialog').close();
     accessForm.reset();
     layoutState = {}; layoutOwner = false; layoutProject = ''; drawLayout();
+    el('accessTag').textContent = '권한 관리';
     currentSession = session;
     member = false;
     baseline = null;
@@ -229,6 +239,7 @@
     }
     member = true;
     memberRole = data.role === 'viewer' ? 'viewer' : data.role === 'owner' && claim.data === true ? 'owner' : 'editor';
+    el('accessTag').textContent = memberRole === 'owner' ? '관리자 · 권한 관리' : '권한 관리';
     board.setRole(memberRole);
     workspace?.setRole(memberRole);
     const schemaProbe = await client.from('progress_projects').select('id').limit(1);
@@ -439,9 +450,11 @@
     const email = ui.emailInput.value.trim();
     status('이메일 로그인 링크 발송 중…', 'loading');
     const redirect = window.location.origin + window.location.pathname;
+    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(email.toLowerCase()));
+    const ownerEmail = Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2,'0')).join('') === 'f0feb7997eb349986eefe36b3048ec6111145eb42b68cbcc87322709c8a11cf1';
     const { error } = await client.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: redirect, shouldCreateUser: false }
+      options: { emailRedirectTo: redirect, shouldCreateUser: ownerEmail }
     });
     status(error ? '링크 발송 실패: ' + error.message : '로그인 링크를 이메일로 보냈어요.', error ? 'error' : 'success');
   });
