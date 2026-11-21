@@ -33,16 +33,7 @@
   background-color: #24273a;
   color: #f6f2ff;
 }
-.task-card .meta-field:last-child > .field-label::after {
-  content: "";
-  display: inline-block;
-  vertical-align: middle;
-  margin-left: 8px;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background-color: var(--status-fg, #9ca3af);
-}
+/* Progress-status color is communicated by the dropdown itself, without a dot beside the label. */
 
 
 /* All dropdowns use a consistent purple chevron with 17px right breathing room. */
