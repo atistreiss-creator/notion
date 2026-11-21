@@ -526,6 +526,19 @@
     try {
       const target = new URL(window.location.pathname, location.origin);
       target.searchParams.set('project', board.getActiveProjectId());
+      const settingsResponse = await fetch(PROJECT_URL + '/auth/v1/settings', {
+        headers: { apikey: ui.keyInput.value.trim() },
+        cache: 'no-store'
+      });
+      if (!settingsResponse.ok) {
+        status('Google 로그인 설정을 확인하지 못했어요. 잠시 후 다시 시도해 주세요.', 'error');
+        return;
+      }
+      const settings = await settingsResponse.json();
+      if (settings.external?.google !== true) {
+        status('관리자가 Supabase에서 Google 로그인을 활성화해야 사용할 수 있어요.', 'warning');
+        return;
+      }
       const { error } = await client.auth.signInWithOAuth({
         provider: 'google', options: { redirectTo: target.href }
       });
