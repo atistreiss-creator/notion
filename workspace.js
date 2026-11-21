@@ -270,16 +270,21 @@
   }
   function editItem(item) {
     const panel = document.getElementById('referenceEditor');
-    if (panel && item.kind === 'reference' && editing === item.id && panel.open) {
+    if (panel && item.kind === 'reference' && panel.dataset.item === item.id && panel.open) {
       resetForm(ids.reference.form);
       panel.open = false;
+      syncReferenceButtons();
       return;
     }
     if (editing) {
       const previous = items.find(row => row.id === editing);
       if (previous) resetForm(ids[previous.kind].form);
     }
-    if (panel) panel.open = item.kind === 'reference';
+    if (panel) {
+      panel.dataset.item = item.kind === 'reference' ? item.id : '';
+      panel.open = item.kind === 'reference';
+      syncReferenceButtons();
+    }
     editing = item.id;
     const form = ids[item.kind].form;
     for (const name of ['title', 'body', 'url', 'category']) {
@@ -331,7 +336,13 @@
     const controls = document.createElement('div');
     controls.className = 'workspace-item-actions';
     if (role !== 'viewer') {
-      controls.appendChild(makeButton(item.title + ' 수정', '수정', () => editItem(item)));
+      const editButton = makeButton(item.title + ' 수정', '수정', () => editItem(item));
+      if (item.kind === 'reference') {
+        editButton.dataset.reference = item.id;
+        editButton.dataset.title = item.title;
+        editButton.setAttribute('aria-controls', 'referenceForm');
+      }
+      controls.appendChild(editButton);
       controls.appendChild(makeButton(item.title + ' 삭제', '×', () => {
         if (!confirm('이 항목을 삭제할까요?')) return;
         items = items.filter(x => x.id !== item.id);
@@ -341,6 +352,24 @@
     row.append(main, controls);
     return row;
   }
+  function syncReferenceButtons() {
+    const panel = document.getElementById('referenceEditor');
+    if (!panel) return;
+    for (const button of ids.reference.list.querySelectorAll('[data-reference]')) {
+      const active = panel.open && panel.dataset.item === button.dataset.reference;
+      button.textContent = active ? '닫기' : '수정';
+      button.setAttribute('aria-expanded', String(active));
+      button.setAttribute('aria-label', button.dataset.title + (active ? ' 닫기' : ' 수정'));
+    }
+    panel.querySelector('summary').textContent = panel.open && panel.dataset.item ? '레퍼런스 수정' : '+ 레퍼런스 추가';
+  }
+  document.getElementById('referenceEditor')?.addEventListener('toggle', event => {
+    if (!event.currentTarget.open) {
+      if (editing && editing === event.currentTarget.dataset.item) resetForm(ids.reference.form);
+      delete event.currentTarget.dataset.item;
+    }
+    syncReferenceButtons();
+  });
   function render() {
     if (!projects.some(p => p.id === activeId)) activeId = DEFAULT_ID;
     projectSelect.replaceChildren();
@@ -369,6 +398,7 @@
       form.hidden = role === 'viewer';
       if (editing && !items.some(item => item.id === editing)) resetForm(form);
     }
+    syncReferenceButtons();
   }
   function resetForm(form) {
     editing = null;
