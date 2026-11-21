@@ -268,25 +268,29 @@
     button.addEventListener('click', fn);
     return button;
   }
-  function editItem(item) {
-    const panel = ids[item.kind].form.parentElement;
-    if (editing === item.id && panel.open) {
-      resetForm(ids[item.kind].form);
-      syncEditorButtons();
-      return;
+  let inlineForm = null;
+  function closeInline() {
+    inlineForm?.remove();
+    inlineForm = null;
+    editing = null;
+  }
+  function editItem(item, row) {
+    const closing = editing === item.id;
+    closeInline();
+    if (!closing) {
+      editing = item.id;
+      inlineForm = ids[item.kind].form.cloneNode(true);
+      inlineForm.id = item.kind + 'InlineForm';
+      inlineForm.classList.add('inline-editor');
+      for (const field of ['title','url','body','category']) {
+        const input = inlineForm.elements.namedItem(field);
+        if (input) input.value = item[field] || '';
+      }
+      inlineForm.querySelector('button[type="submit"]').textContent = '수정 저장';
+      inlineForm.addEventListener('submit', event => saveItem(event, item.kind, item.id));
+      row.after(inlineForm);
     }
-    const previous = items.find(row => row.id === editing);
-    if (previous) resetForm(ids[previous.kind].form);
-    panel.open = true;
-    editing = item.id;
     syncEditorButtons();
-    const form = ids[item.kind].form;
-    for (const name of ['title', 'body', 'url', 'category']) {
-      if (form.elements.namedItem(name)) form.elements.namedItem(name).value = item[name] || '';
-    }
-    const btn = form.querySelector('button[type="submit"]');
-    if (btn) btn.textContent = '수정 저장';
-
   }
   function renderItem(item) {
     const row = document.createElement('div');
@@ -328,7 +332,7 @@
     const controls = document.createElement('div');
     controls.className = 'workspace-item-actions';
     if (role !== 'viewer') {
-      const editButton = makeButton(item.title + ' 수정', '수정', () => editItem(item));
+      const editButton = makeButton(item.title + ' 수정', '수정', () => editItem(item, row));
       editButton.dataset.item = item.id;
       editButton.dataset.title = item.title;
       editButton.setAttribute('aria-controls', ids[item.kind].form.id);
@@ -347,23 +351,14 @@
       const {list, form} = ids[kind];
       const panel = form.parentElement;
       for (const button of list.querySelectorAll('[data-item]')) {
-        const active = panel.open && editing === button.dataset.item;
+        const active = editing === button.dataset.item;
         button.textContent = active ? '닫기' : '수정';
         button.setAttribute('aria-expanded', String(active));
+        if (active) button.setAttribute('aria-controls', inlineForm.id);
+        else button.removeAttribute('aria-controls');
         button.setAttribute('aria-label', button.dataset.title + ' ' + button.textContent);
       }
-      const summary = panel.querySelector('summary');
-      summary.dataset.addLabel ||= summary.textContent;
-      summary.textContent = panel.open && items.some(x => x.kind === kind && x.id === editing)
-        ? summary.dataset.addLabel.replace('+ ', '').replace('추가','수정') : summary.dataset.addLabel;
     }
-  }
-  for (const kind of TYPES) {
-    const form = ids[kind].form;
-    form.parentElement.addEventListener('toggle', () => {
-      if (!form.parentElement.open && items.some(x => x.id === editing && x.kind === kind)) resetForm(form);
-      syncEditorButtons();
-    });
   }
   const headerId = 'project-masthead';
   const headerFields = [...document.querySelectorAll('.masthead-copy > .eyebrow, .masthead-copy > h1, .masthead-copy > p')];
@@ -396,6 +391,7 @@
     closeHeader(); persist(); render();
   });
   function render() {
+    if (role === 'viewer' || !items.some(x => x.id === editing)) closeInline();
     const header = items.find(x => x.id === headerId);
     const values = header ? [header.category, header.title, header.body] : defaultHeader;
     headerFields.forEach((el,i) => el.textContent = values[i]);
@@ -418,7 +414,10 @@
       list.replaceChildren();
       const rows = items.filter(item => item.kind === kind && item.id !== headerId);
       count.textContent = rows.length + '개';
-      rows.forEach(item => list.appendChild(renderItem(item)));
+      rows.forEach(item => {
+        list.appendChild(renderItem(item));
+        if (editing === item.id && inlineForm) list.appendChild(inlineForm);
+      });
       if (!rows.length) {
         const empty = document.createElement('div');
         empty.className = 'workspace-empty';
@@ -443,31 +442,25 @@
       button.textContent = labels[form.id.replace('Form','')] || '+ 추가';
     }
   }
+  function saveItem(event, kind, itemId) {
+    event.preventDefault();
+    if (role === 'viewer') return;
+    const form = event.currentTarget;
+    const previous = itemId ? items.find(x => x.id === itemId && x.kind === kind) : null;
+    if (itemId && !previous) return;
+    const val = sanitizeItem({...previous, ...Object.fromEntries(new FormData(form)), kind,
+      id: itemId || newId(), sort_order: previous?.sort_order ?? items.length});
+    if (!val) return;
+    if (['resource','reference'].includes(kind) && !val.url) return alert('http 또는 https 링크를 입력해주세요.');
+    if (previous) items = items.map(x => x.id === itemId ? val : x);
+    else if (items.length < MAX_ITEMS) items.push(val);
+    else return alert('프로젝트당 최대 ' + MAX_ITEMS + '개 항목을 등록할 수 있어요.');
+    if (previous) closeInline();
+    else { form.reset(); form.parentElement.open = false; }
+    persist(); render();
+  }
   for (const kind of TYPES) {
-    ids[kind].form.addEventListener('submit', event => {
-      event.preventDefault();
-      if (role === 'viewer') return;
-      const form = ids[kind].form;
-      if (editing && !items.some(item => item.id === editing && item.kind === kind)) editing = null;
-      const obj = Object.fromEntries(new FormData(form));
-      const val = sanitizeItem({
-        ...obj, kind,
-        id: editing || newId(),
-        completed: editing ? items.find(x => x.id === editing)?.completed : false,
-        sort_order: editing ? items.find(x => x.id === editing)?.sort_order : items.length
-      });
-      if (!val) return;
-      if (['resource', 'reference'].includes(kind) && !val.url) {
-        alert('http 또는 https 링크를 입력해주세요.');
-        return;
-      }
-      if (editing) items = items.map(x => x.id === editing ? val : x);
-      else if (items.length < MAX_ITEMS) items.push(val);
-      else { alert('프로젝트당 최대 ' + MAX_ITEMS + '개 항목을 등록할 수 있어요.'); return; }
-      resetForm(form);
-      if (kind === 'reference' && document.getElementById('referenceEditor')) document.getElementById('referenceEditor').open = false;
-      persist(); render();
-    });
+    ids[kind].form.addEventListener('submit', event => saveItem(event, kind, null));
   }
   projectSelect.addEventListener('change', () => setActive(projectSelect.value));
   document.getElementById('createProject').addEventListener('click', () => {
