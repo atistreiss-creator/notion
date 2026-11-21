@@ -75,6 +75,37 @@
     return false;
   }
 
+  let retryDeadline = 0;
+  let counterTimer;
+  function retryTime(header, now) {
+    if (!header) return 0;
+    if (/^\d+$/.test(header)) return now + Number(header) * 1000;
+    const date = Date.parse(header);
+    return Number.isFinite(date) ? date : 0;
+  }
+  async function fetchWithRetryTime(input, init) {
+    const response = await fetch(input, init);
+    if (new URL(response.url).pathname.endsWith('/auth/v1/otp')) {
+      retryDeadline = retryTime(response.headers.get('Retry-After'), Date.now());
+    }
+    return response;
+  }
+  function showAuthCounter(start, deadline) {
+    const label = el('authRetryTime');
+    if (!label) return;
+    clearInterval(counterTimer);
+    label.hidden = !start;
+    if (!start) return;
+    function tick() {
+      const now = Date.now();
+      const seconds = deadline ? Math.max(0, Math.ceil((deadline - now) / 1000)) : Math.max(0, Math.floor((now - start) / 1000));
+      const clock = Math.floor(seconds / 60) + '분 ' + String(seconds % 60).padStart(2, '0') + '초';
+      label.textContent = deadline ? (seconds ? '서버 안내 재시도까지 ' + clock : '서버 안내 대기 시간이 지났어요.') : '마지막 발송 제한 응답 후 ' + clock + ' 경과 · 해제 시각 미제공';
+      if (deadline && !seconds) clearInterval(counterTimer);
+    }
+    counterTimer = setInterval(tick, 1000);
+    tick();
+  }
   async function connect(key) {
     if (!keyIsPublic(key)) {
       status('공개용 Publishable / anon 키만 사용할 수 있어요.', 'error');
@@ -87,6 +118,7 @@
     if (client) return;
     try {
       client = window.supabase.createClient(PROJECT_URL, key.trim(), {
+        global: { fetch: fetchWithRetryTime },
         auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
       });
       localStorage.setItem(KEY_STORAGE, key.trim());
@@ -520,6 +552,8 @@
     const send = ui.emailForm.querySelector('button[type="submit"]');
     if (send.disabled) return;
     send.disabled = true;
+    retryDeadline = 0;
+    showAuthCounter(0, 0);
 
     try {
       const email = ui.emailInput.value.trim();
@@ -535,6 +569,7 @@
       });
       if (error?.status === 429 || error?.code === 'over_email_send_rate_limit') {
 
+        showAuthCounter(Date.now(), retryDeadline);
         status('인증 메일 발송이 일시 제한됐어요. 최근 받은 미사용 링크를 확인하거나 잠시 후 다시 시도해 주세요.', 'warning');
         return;
       }
