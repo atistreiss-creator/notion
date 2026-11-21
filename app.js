@@ -92,6 +92,7 @@ function reconcileAssignees() {
 function saveTasks() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+    window.dispatchEvent(new CustomEvent('progress-board:changed', { detail: { resource: 'tasks' } }));
   } catch (e) {
     console.warn('작업 저장 실패:', e);
     notify('저장이 차단된 환경입니다. JSON 백업을 내려받아 주세요.');
@@ -100,6 +101,7 @@ function saveTasks() {
 function savePeople() {
   try {
     localStorage.setItem(PEOPLE_KEY, JSON.stringify(people));
+    window.dispatchEvent(new CustomEvent('progress-board:changed', { detail: { resource: 'people' } }));
   } catch (e) {
     console.warn('작업자 저장 실패:', e);
     notify('작업자 목록을 저장하지 못했습니다.');
@@ -326,5 +328,37 @@ document.getElementById('importFile').addEventListener('change', async event => 
     notify('불러오기에 실패했습니다: ' + e.message);
   }
 });
+
+// Stable client-side adapter for the optional authenticated cloud synchronization module.
+// Cloud downloads never trigger outgoing writes; callers must verify access via Supabase RLS.
+window.progressBoard = {
+  getSnapshot() {
+    return clone({ tasks, people });
+  },
+  applyRemoteSnapshot(snapshot) {
+    if (!snapshot || !Array.isArray(snapshot.tasks) || !Array.isArray(snapshot.people))
+      throw new Error('Invalid remote progress snapshot');
+    if (snapshot.tasks.length > MAX_TASKS || snapshot.people.length > MAX_PEOPLE)
+      throw new Error('Remote progress snapshot exceeds limits');
+    const nextTasks = snapshot.tasks.map(sanitizedTask);
+    const nextPeople = snapshot.people.map(sanitizedPerson);
+    if (nextTasks.some(t => !t) || nextPeople.some(p => !p))
+      throw new Error('Invalid remote task or worker record');
+    // Keep an emergency local copy before the first remote replacement.
+    try {
+      const key = 'lg-u-before-cloud-' + new Date().toISOString().slice(0, 10);
+      if (!localStorage.getItem(key)) localStorage.setItem(key, JSON.stringify({ tasks, people }));
+    } catch (error) { console.warn('Local backup could not be created:', error); }
+    tasks = nextTasks;
+    people = nextPeople;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+      localStorage.setItem(PEOPLE_KEY, JSON.stringify(people));
+    } catch (error) { console.warn('Local cloud snapshot cache unavailable:', error); }
+    render();
+  },
+  setNotice: notify
+};
+
 reconcileAssignees();
 render();
