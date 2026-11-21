@@ -36,7 +36,7 @@
       if (!Array.isArray(entries)) throw new Error('Invalid projects');
       const valid = entries.filter(p =>
         p && /^[a-z0-9-]{1,64}$/.test(p.id) && typeof p.name === 'string'
-      ).map(p => ({ id: p.id, name: p.name.trim().slice(0, 100) }));
+      ).map(p => ({ id: p.id, name: projectName(p.name) }));
       if (!valid.some(p => p.id === DEFAULT_ID))
         valid.unshift({ id: DEFAULT_ID, name: 'LG U+ 1등 DNA 시상식' });
       return valid.slice(0, MAX_PROJECTS);
@@ -238,6 +238,20 @@
       localStorage.setItem(activeStorageKey(activeId), JSON.stringify(items));
       if (notify) window.dispatchEvent(new CustomEvent('workspace:changed', { detail: { projectId: activeId } }));
     } catch (e) { alert('로컬 저장에 실패했습니다. 자료 백업을 내려받아 주세요.'); }
+  }
+  function projectName(value) {
+    const input = value.trim();
+    if (input.length <= 100) return input;
+    const parts = typeof Intl.Segmenter === 'function'
+      ? new Intl.Segmenter('ko', { granularity: 'grapheme' }).segment(input)
+      : Array.from(input);
+    let result = '';
+    for (const part of parts) {
+      const character = typeof part === 'string' ? part : part.segment;
+      if (result.length + character.length > 100) break;
+      result += character;
+    }
+    return result;
   }
   function saveProjects() {
     try { localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects)); } catch (e) { console.warn(e); }
@@ -476,7 +490,7 @@
     const name = prompt('새 프로젝트 이름을 입력하세요.');
     if (!name?.trim()) return;
     const id = 'project-' + newId().toLowerCase();
-    const project = { id, name: name.trim().slice(0, 100) };
+    const project = { id, name: projectName(name) };
     projects.push(project);
     saveProjects();
     window.dispatchEvent(new CustomEvent('workspace:projects-changed', { detail: { project } }));
@@ -488,7 +502,7 @@
     if (!project) return;
     const name = prompt('프로젝트 이름을 입력하세요. 이모지도 붙여넣을 수 있어요.\n예: 🎬 MULTRA Brand Film', project.name);
     if (!name?.trim()) return;
-    project.name = name.trim().slice(0, 100);
+    project.name = projectName(name);
     saveProjects();
     window.dispatchEvent(new CustomEvent('workspace:projects-changed', { detail: { project: copy(project) } }));
     render();
@@ -622,7 +636,7 @@
       const seen = new Set();
       const next = remote.filter(p => p && /^[a-z0-9-]{1,64}$/.test(p.id) &&
         typeof p.name === 'string' && !seen.has(p.id) && seen.add(p.id))
-        .map(p => ({ id: p.id, name: p.name.slice(0, 100) }));
+        .map(p => ({ id: p.id, name: projectName(p.name) }));
       if (!next.some(p => p.id === DEFAULT_ID))
         next.unshift({ id: DEFAULT_ID, name: 'LG U+ 1등 DNA 시상식' });
       // Preserve projects created in this browser until an editor can upload them.
