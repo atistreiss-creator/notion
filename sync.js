@@ -49,6 +49,16 @@
   function status(text, kind = 'idle') {
     ui.status.textContent = text;
     ui.status.dataset.state = kind;
+    const label = el('modeLabel');
+    const desc = el('storageDescription');
+    if (label) label.textContent = kind === 'success' && member
+      ? (cloudUpgraded ? '팀 공유 모드' : '작업 공유 모드')
+      : member ? '동기화 확인 중' : '로컬 저장 모드';
+    if (desc) desc.textContent = kind === 'success' && member
+      ? (cloudUpgraded
+        ? '프로젝트별 작업과 자료는 Supabase에 자동 저장됩니다.'
+        : '작업 진행률은 자동 동기화됩니다. 프로젝트 자료는 아직 브라우저에 저장됩니다.')
+      : '공유 연결 전에는 현재 브라우저에 자동 저장됩니다. JSON 백업을 권장합니다.';
   }
   function keyIsPublic(raw) {
     const key = raw.trim();
