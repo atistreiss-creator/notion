@@ -373,3 +373,5 @@
 #accessForm{display:grid;gap:12px;margin-bottom:14px}
 #accessForm label{display:grid;gap:5px;font-size:13px}
 .access-footer{margin:0;display:flex;align-items:center;justify-content:flex-end;gap:8px}
+
+.can-reorder{cursor:grab}.can-reorder:active{cursor:grabbing}.can-reorder.drop-before{box-shadow:inset 0 2px #ce88ff}.can-reorder.drop-after{box-shadow:inset 0 -2px #ce88ff}
