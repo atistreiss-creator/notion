@@ -351,3 +351,12 @@
 .workspace-item-actions{align-items:center;justify-content:flex-end;gap:8px}
 .workspace-small-button{box-sizing:border-box;display:inline-grid;place-items:center;height:30px;min-width:30px;padding:0 8px;line-height:1;white-space:nowrap;border-radius:9px}
 .workspace-item-actions button:first-child{min-width:44px}
+
+.workspace-group summary{position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;padding-right:40px}
+.workspace-group summary::after{content:"";position:absolute;right:15px;top:50%;width:7px;height:7px;margin:0;border:solid currentColor;border-width:0 1.5px 1.5px 0;transform:translateY(-70%) rotate(45deg)}
+.workspace-group[open] summary::after{transform:translateY(-70%) rotate(45deg)}
+.workspace-group details[open]>summary::after,.workspace-group[open]>summary::after{transform:translateY(-30%) rotate(225deg)}
+.masthead-copy #editHeader{margin-top:10px}
+#headerForm{grid-template-columns:1fr;margin:12px 0}
+#headerForm label{display:grid;gap:5px;color:#bcb8ce;font-size:12px}
+@media(max-width:680px){.workspace-group summary{grid-template-columns:minmax(0,1fr)}}
