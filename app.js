@@ -6,7 +6,7 @@ const PROJECT_KEY = 'lg-u-active-project-v1';
 const DEFAULT_PROJECT_ID = 'lg-u-dna';
 function activeProjectId() {
   try {
-    const id = localStorage.getItem(PROJECT_KEY) || DEFAULT_PROJECT_ID;
+    const id = window.workspaceBoard?.getProjectId() || new URL(location.href).searchParams.get('project') || localStorage.getItem(PROJECT_KEY) || DEFAULT_PROJECT_ID;
     return /^[a-z0-9-]{1,64}$/.test(id) ? id : DEFAULT_PROJECT_ID;
   } catch (e) { return DEFAULT_PROJECT_ID; }
 }
