@@ -8,15 +8,17 @@
   <title>영상 제작 · 진행 관리</title>
   <link rel="stylesheet" href="./styles.css?v=row-drag-9">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
-  <script src="./app.js?v=layout-7" defer></script>
-  <script src="./workspace.js?v=row-drag-9" defer></script>
-  <script src="./sync.js?v=owner-panels-11" defer></script>
+  <script src="./app.js?v=project-links-12" defer></script>
+  <script src="./workspace.js?v=project-links-12" defer></script>
+  <script src="./sync.js?v=project-links-12" defer></script>
   <style>
     html:not(.verified-board-owner) :is(.people-panel,.sync-panel,.workspace-data-actions,.toolbar),
     #accountControls :is(#copyTeamLink,#syncRefresh,#syncImportArea) { display: none !important; }
     [data-owner-panel][hidden] { display: none !important; }
     #accessDialog { width: max-content; min-width: min(420px, calc(100vw - 32px)); max-width: calc(100vw - 32px); }
     #accessInfo { white-space: nowrap; max-width: 100%; overflow-x: auto; }
+    .verified-board-owner #currentProjectName { display:none; }
+    #currentProjectName { display:block; font-size:1.1rem; }
   </style>
 </head>
 <body>
@@ -51,12 +53,14 @@
     <section class="project-switcher" aria-label="프로젝트 선택">
       <div class="project-choice">
         <label class="field-label" for="projectSelect">현재 프로젝트</label>
-        <select id="projectSelect" class="meta-select project-select" aria-label="현재 프로젝트">
+        <strong id="currentProjectName" aria-live="polite">현재 프로젝트</strong>
+        <select data-owner-panel hidden id="projectSelect" class="meta-select project-select" aria-label="현재 프로젝트">
           <option value="lg-u-dna">LG U+ 1등 DNA 시상식</option>
         </select>
       </div>
-      <button class="button button-outline" id="createProject" type="button">+ 새 프로젝트</button>
-      <button class="button button-outline" id="renameProject" type="button">이름 변경</button>
+      <button class="button button-outline" data-owner-panel hidden id="createProject" type="button">+ 새 프로젝트</button>
+      <button class="button button-outline" data-owner-panel hidden id="renameProject" type="button">이름 변경</button>
+      <button data-owner-panel hidden class="button button-outline" id="copyProjectLink" type="button">프로젝트 링크 복사</button>
     </section>
 
     <section class="overview" aria-label="전체 진행 현황">
