@@ -9,20 +9,11 @@
   <link rel="stylesheet" href="./styles.css?v=20261122-6">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
   <script src="./app.js?v=20261122-6" defer></script>
-  <script src="./workspace.js?v=20261122-6" defer></script>
+  <script src="./workspace.js?v=dna-layout-2" defer></script>
   <script src="./sync.js?v=20261122-6" defer></script>
 </head>
 <body>
   <main class="workspace">
-    <header class="masthead">
-      <div class="masthead-copy">
-        <span class="eyebrow">PRODUCTION / WORKFLOW</span>
-        <h1>영상 제작 진행 현황</h1>
-        <p>작업명을 수정하고 담당자를 지정한 다음, 슬라이더를 움직여 진행률을 기록하세요.</p>
-      </div>
-      <span class="mode-pill" id="modePill"><span class="mode-dot"></span><span id="modeLabel">로컬 저장 모드</span></span>
-    </header>
-
     <section class="project-switcher" aria-label="프로젝트 선택">
       <div class="project-choice">
         <label class="field-label" for="projectSelect">현재 프로젝트</label>
@@ -33,6 +24,16 @@
       <button class="button button-outline" id="createProject" type="button">+ 새 프로젝트</button>
       <button class="button button-outline" id="renameProject" type="button">이름 변경</button>
     </section>
+
+    <header class="masthead">
+      <div class="masthead-copy">
+        <span class="eyebrow">PRODUCTION / WORKFLOW</span>
+        <h1>영상 제작 진행 현황</h1>
+        <p>작업명을 수정하고 담당자를 지정한 다음, 슬라이더를 움직여 진행률을 기록하세요.</p>
+      </div>
+      <span class="mode-pill" id="modePill"><span class="mode-dot"></span><span id="modeLabel">로컬 저장 모드</span></span>
+    </header>
+
 
     <section class="overview" aria-label="전체 진행 현황">
       <div class="overview-top">
@@ -115,16 +116,6 @@
       </form>
     </section>
 
-    <section class="board" aria-label="작업 분담 및 진행률">
-      <div class="board-head">
-        <div>
-          <h2>작업 관리</h2>
-          <p>작업명 · 담당자 · 상태 · 진행률을 직접 변경할 수 있어요.</p>
-        </div>
-        <button class="button button-primary" id="addTask" type="button"><span aria-hidden="true">＋</span> 작업 추가</button>
-      </div>
-      <div id="taskList" class="task-list" aria-live="off"></div>
-    </section>
 
     <section class="workspace-sections" id="workspaceSections" aria-label="프로젝트 자료와 기록">
       <div class="workspace-heading">
@@ -135,6 +126,19 @@
         </div>
         <span class="workspace-count" id="workspaceCount">0개 항목</span>
       </div>
+
+      <details class="workspace-group" open>
+        <summary><span><span class="workspace-icon">▷</span> 모션 레퍼런스 <small id="referenceCount">0개</small></span><span class="workspace-hint">영상 · 레퍼런스 · 연출 메모</span></summary>
+        <div id="referenceList" class="workspace-item-list"></div>
+        <details id="referenceEditor"><summary>+ 레퍼런스 추가</summary>
+        <form id="referenceForm" class="workspace-add-form">
+          <input name="title" class="meta-input" maxlength="120" placeholder="레퍼런스 이름" aria-label="레퍼런스 이름" required>
+          <input name="url" type="url" class="meta-input" placeholder="https://..." aria-label="레퍼런스 URL" required>
+          <textarea name="body" class="workspace-textarea" maxlength="1000" rows="2" placeholder="참고할 연출·모션 포인트" aria-label="레퍼런스 메모"></textarea>
+          <button type="submit" class="button button-outline">+ 레퍼런스 추가</button>
+        </form>
+        </details>
+      </details>
 
       <details class="workspace-group">
         <summary><span><span class="workspace-icon">▤</span> 프로젝트 브리프 · 메모 <small id="noteCount">0개</small></span><span class="workspace-hint">목표 · 방향 · 확정/미확정 사항</span></summary>
@@ -181,16 +185,22 @@
         </form>
       </details>
 
-      <details class="workspace-group">
-        <summary><span><span class="workspace-icon">▷</span> 모션 레퍼런스 <small id="referenceCount">0개</small></span><span class="workspace-hint">영상 · 레퍼런스 · 연출 메모</span></summary>
-        <div id="referenceList" class="workspace-item-list"></div>
-        <form id="referenceForm" class="workspace-add-form">
-          <input name="title" class="meta-input" maxlength="120" placeholder="레퍼런스 이름" aria-label="레퍼런스 이름" required>
-          <input name="url" type="url" class="meta-input" placeholder="https://..." aria-label="레퍼런스 URL" required>
-          <textarea name="body" class="workspace-textarea" maxlength="1000" rows="2" placeholder="참고할 연출·모션 포인트" aria-label="레퍼런스 메모"></textarea>
-          <button type="submit" class="button button-outline">+ 레퍼런스 추가</button>
-        </form>
-      </details>
+
+
+
+
+    </section>
+
+    <section class="board" aria-label="작업 분담 및 진행률">
+      <div class="board-head">
+        <div>
+          <h2>작업 관리</h2>
+          <p>작업명 · 담당자 · 상태 · 진행률을 직접 변경할 수 있어요.</p>
+        </div>
+        <button class="button button-primary" id="addTask" type="button"><span aria-hidden="true">＋</span> 작업 추가</button>
+      </div>
+      <div id="taskList" class="task-list" aria-live="off"></div>
+    </section>
 
       <div class="workspace-data-actions">
         <span>프로젝트 기록 백업 및 노션 자료 이전</span>
@@ -200,8 +210,6 @@
           <input type="file" id="workspaceImportFile" accept=".json,.md,.markdown,.txt,application/json,text/markdown,text/plain" hidden>
         </div>
       </div>
-    </section>
-
     <section class="toolbar" aria-label="데이터 백업">
       <div class="toolbar-text">
         <strong>작업 데이터 관리</strong>
