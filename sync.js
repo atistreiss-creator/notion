@@ -54,7 +54,7 @@
     const desc = el('storageDescription');
     if (label) label.textContent = kind === 'success' && member
       ? (cloudUpgraded ? '팀 공유 모드' : '작업 공유 모드')
-      : member ? '동기화 확인 중' : '로컬 저장 모드';
+      : member ? (kind === 'error' ? '동기화 오류' : text) : '이 브라우저에만 저장';
     if (desc) desc.textContent = kind === 'success' && member
       ? (cloudUpgraded
         ? '프로젝트별 작업과 자료는 Supabase에 자동 저장됩니다.'
@@ -96,7 +96,13 @@
 
       client.auth.onAuthStateChange((_event, session) => {
         // Supabase recommends deferring API calls out of this callback.
-        setTimeout(() => handleSession(session), 0);
+        setTimeout(() => {
+          if (member && session?.user?.id === currentSession?.user?.id) {
+            currentSession = session;
+            return;
+          }
+          void handleSession(session);
+        }, 0);
       });
       const { data, error } = await client.auth.getSession();
       if (error) throw error;
@@ -258,7 +264,9 @@
     baselineProjectId = null;
     contentBaseline = [];
     clearTimeout(pushTimer);
+    pushTimer = null;
     clearTimeout(refreshTimer);
+    refreshTimer = null;
     if (realtimeChannel && client) {
       client.removeChannel(realtimeChannel);
       realtimeChannel = null;
@@ -329,6 +337,8 @@
     return { projects: p.data || [], content: c.data || [] };
   }
 
+  let editRevision = 0;
+  let latestPull = 0;
   async function pullCloud(first = false) {
     if (!member || !currentSession || !client) return;
     const projectId = board.getActiveProjectId();
@@ -344,11 +354,14 @@
       return;
     }
     try {
+      const revision = editRevision;
+      const request = ++latestPull;
       const [cloud, extras, layout] = await Promise.all([
         remoteSnapshot(projectId),
         remoteWorkspace(projectId), client.from('progress_layout').select('group_name,positions').eq('project_id',projectId)
       ]);
       if (!member || projectId !== board.getActiveProjectId() || generation !== authGeneration) return;
+      if (request !== latestPull || revision !== editRevision || pushRunning || pushTimer) return;
       layoutProject = projectId; layoutOwner = !layout.error && memberRole === 'owner';
       layoutState = Object.fromEntries((layout.data || []).map(row => [row.group_name,row.positions])); drawLayout();
       baseline = clone(cloud);
@@ -391,6 +404,7 @@
     };
   }
   function schedulePush() {
+    editRevision++;
     if (!member || memberRole === 'viewer' || !baseline ||
         baselineProjectId !== board.getActiveProjectId()) return;
     clearTimeout(pushTimer);
@@ -485,6 +499,7 @@
         schedulePull);
     if (cloudUpgraded) {
       realtimeChannel
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'progress_layout' }, schedulePull)
         .on('postgres_changes',
           { event: '*', schema: 'public', table: 'progress_content' },
           schedulePull)
@@ -575,7 +590,9 @@
   window.addEventListener('workspace:changed', schedulePush);
   window.addEventListener('workspace:projectchanged', () => {
     clearTimeout(pushTimer);
+    pushTimer = null;
     clearTimeout(refreshTimer);
+    refreshTimer = null;
     baseline = null;
     baselineProjectId = null;
     contentBaseline = [];
