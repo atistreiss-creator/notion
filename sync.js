@@ -241,8 +241,12 @@
     const {error} = await client.rpc('progress_set_access',{target_email:fields.get('email'),access_role:fields.get('role')});
     accessInfo.textContent = error ? '권한 적용 실패 · ' + error.message : '권한을 적용했습니다.';
   });
+  function setOwnerPanels(visible) {
+    document.documentElement.classList.toggle('verified-board-owner', visible);
+    for (const panel of document.querySelectorAll('[data-owner-panel]')) panel.hidden = !visible;
+  }
   async function handleSession(session) {
-    document.documentElement.classList.remove('verified-board-owner');
+    setOwnerPanels(false);
     const generation = ++authGeneration;
     if (el('accessDialog').open) el('accessDialog').close();
     accessForm.reset();
@@ -290,7 +294,7 @@
     member = true;
     memberRole = data.role === 'viewer' ? 'viewer' : data.role === 'owner' && claim.data === true ? 'owner' : 'editor';
     el('accessTag').textContent = memberRole === 'owner' ? '관리자 · 권한 관리' : '권한 관리';
-    document.documentElement.classList.toggle('verified-board-owner', memberRole === 'owner');
+    setOwnerPanels(memberRole === 'owner');
     board.setRole(memberRole);
     workspace?.setRole(memberRole);
     const schemaProbe = await client.from('progress_projects').select('id').limit(1);
