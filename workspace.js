@@ -287,6 +287,7 @@
     }
     const btn = form.querySelector('button[type="submit"]');
     if (btn) btn.textContent = '수정 저장';
+    if (item.kind === 'reference') return;
     form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     form.elements.namedItem('title')?.focus();
   }
