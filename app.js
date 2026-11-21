@@ -2,6 +2,18 @@
 
 const STORAGE_KEY = 'lg-u-progress-board-v1';
 const PEOPLE_KEY = 'lg-u-progress-people-v1';
+const PROJECT_KEY = 'lg-u-active-project-v1';
+const DEFAULT_PROJECT_ID = 'lg-u-dna';
+function activeProjectId() {
+  try {
+    const id = localStorage.getItem(PROJECT_KEY) || DEFAULT_PROJECT_ID;
+    return /^[a-z0-9-]{1,64}$/.test(id) ? id : DEFAULT_PROJECT_ID;
+  } catch (e) { return DEFAULT_PROJECT_ID; }
+}
+function taskStorageKey() {
+  const id = activeProjectId();
+  return id === DEFAULT_PROJECT_ID ? STORAGE_KEY : STORAGE_KEY + ':' + id;
+}
 const MAX_TASKS = 100;
 const MAX_PEOPLE = 50;
 const COLORS = new Set(['blue', 'yellow', 'purple', 'teal', 'pink', 'gray']);
@@ -49,8 +61,8 @@ function sanitizedTask(t, index) {
 }
 function readTasks() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw === null) return clone(DEFAULT_TASKS);
+    const raw = localStorage.getItem(taskStorageKey());
+    if (raw === null) return activeProjectId() === DEFAULT_PROJECT_ID ? clone(DEFAULT_TASKS) : [];
     const t = JSON.parse(raw);
     if (!Array.isArray(t) || t.length > MAX_TASKS) throw new Error('invalid task data');
     const checked = t.map(sanitizedTask);
@@ -91,8 +103,8 @@ function reconcileAssignees() {
 }
 function saveTasks() {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
-    window.dispatchEvent(new CustomEvent('progress-board:changed', { detail: { resource: 'tasks' } }));
+    localStorage.setItem(taskStorageKey(), JSON.stringify(tasks));
+    window.dispatchEvent(new CustomEvent('progress-board:changed', { detail: { resource: 'tasks', projectId: activeProjectId() } }));
   } catch (e) {
     console.warn('작업 저장 실패:', e);
     notify('저장이 차단된 환경입니다. JSON 백업을 내려받아 주세요.');
@@ -332,6 +344,12 @@ document.getElementById('importFile').addEventListener('change', async event => 
 // Stable client-side adapter for the optional authenticated cloud synchronization module.
 // Cloud downloads never trigger outgoing writes; callers must verify access via Supabase RLS.
 window.progressBoard = {
+  getActiveProjectId: activeProjectId,
+  loadProject() {
+    tasks = readTasks();
+    reconcileAssignees();
+    render();
+  },
   getSnapshot() {
     return clone({ tasks, people });
   },
@@ -352,7 +370,7 @@ window.progressBoard = {
     tasks = nextTasks;
     people = nextPeople;
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+      localStorage.setItem(taskStorageKey(), JSON.stringify(tasks));
       localStorage.setItem(PEOPLE_KEY, JSON.stringify(people));
     } catch (error) { console.warn('Local cloud snapshot cache unavailable:', error); }
     render();
