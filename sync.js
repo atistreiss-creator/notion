@@ -109,6 +109,65 @@
     }
   }
 
+  let layoutState = {}, layoutOwner = false, layoutProject = '', dragging = null;
+  const groups = {
+    sections: [...document.querySelectorAll('main > .overview, main > .sync-panel, main > .people-panel, main > .workspace-sections, main > .board')],
+    resources: [...document.querySelectorAll('.workspace-group')]
+  };
+  for (const [group,nodes] of Object.entries(groups)) {
+    nodes.forEach(node => node.dataset.layoutId = group === 'sections' ? node.classList[0] : node.querySelector('small').id);
+  }
+  function nodesFor(group) {
+    return group === 'tasks' ? [...document.querySelectorAll('#taskList > [data-layout-id]')] : groups[group];
+  }
+  function drawLayout() {
+    const active = layoutProject === board.getActiveProjectId();
+    for (const group of ['sections','resources','tasks']) {
+      const nodes = nodesFor(group);
+      if (!nodes.length) continue;
+      const order = active && Array.isArray(layoutState[group]) ? layoutState[group] : [];
+      const byId = new Map(nodes.map(n => [n.dataset.layoutId,n]));
+      const ordered = [...new Set([...order.map(id => byId.get(id)).filter(Boolean), ...nodes])];
+      const parent = nodes[0].parentElement;
+      const current = [...parent.children].filter(n => byId.get(n.dataset.layoutId) === n);
+      if (ordered.some((node,i) => node !== current[i])) {
+        const next = current[current.length-1].nextSibling;
+        for (const node of ordered) parent.insertBefore(node,next);
+      }
+      ordered.forEach((node,index) => {
+        let handle = node.querySelector(':scope > .layout-handle, :scope > summary > .layout-handle');
+        if (!active || !layoutOwner) { handle?.remove(); return; }
+        if (handle) return;
+        handle = document.createElement('button');
+        handle.type='button'; handle.className='workspace-small-button layout-handle'; handle.textContent='⠿ 순서 이동';
+        handle.title='드래그하거나 위·아래 방향키로 이동'; handle.draggable=true;
+        handle.onclick=e=>{e.preventDefault();e.stopPropagation();};
+        handle.ondragstart=e=>{e.stopPropagation(); dragging={group,node};e.dataTransfer.setData('text/plain','move');};
+        handle.ondragend=()=>dragging=null;
+        handle.onkeydown=e=>{
+          if (!['ArrowUp','ArrowDown'].includes(e.key)) return;
+          e.preventDefault(); e.stopPropagation();
+          const siblings=[...parent.children].filter(n=>nodesFor(group).includes(n));
+          const target=siblings[siblings.indexOf(node)+(e.key==='ArrowUp'?-1:1)];
+          if(target) void moveLayout(group,node,target);
+        };
+        node.ondragover=e=>{if(dragging?.group===group){e.preventDefault();e.stopPropagation();}};
+        node.ondrop=e=>{if(dragging?.group!==group)return;e.preventDefault();e.stopPropagation();void moveLayout(group,dragging.node,node);dragging=null;};
+        (node.matches('details') ? node.querySelector('summary') : node).prepend(handle);
+      });
+    }
+  }
+  async function moveLayout(group,node,target) {
+    if (!layoutOwner || memberRole!=='owner' || layoutProject!==board.getActiveProjectId() || node===target) return;
+    const project=layoutProject;
+    const ids=[...node.parentElement.children].filter(n=>nodesFor(group).includes(n)).map(n=>n.dataset.layoutId);
+    const dest=ids.indexOf(target.dataset.layoutId);
+    ids.splice(ids.indexOf(node.dataset.layoutId),1);ids.splice(dest,0,node.dataset.layoutId);
+    const {error}=await client.from('progress_layout').upsert({project_id:project,group_name:group,positions:ids});
+    if(error){board.setNotice('순서를 저장하지 못했습니다.');return;}
+    if(project===layoutProject){layoutState[group]=ids;drawLayout();}
+  }
+  window.addEventListener('progress:render',drawLayout);
   const accessForm = el('accessForm');
   const accessInfo = el('accessInfo');
   el('accessTag').addEventListener('click', () => {
@@ -128,6 +187,7 @@
     const generation = ++authGeneration;
     if (el('accessDialog').open) el('accessDialog').close();
     accessForm.reset();
+    layoutState = {}; layoutOwner = false; layoutProject = ''; drawLayout();
     currentSession = session;
     member = false;
     baseline = null;
@@ -153,6 +213,8 @@
     ui.memberArea.hidden = false;
     ui.memberLabel.textContent = session.user.email || '로그인됨';
     status('접근 권한 확인 중…', 'loading');
+    const claim = await client.rpc('progress_claim_owner');
+    if (generation !== authGeneration) return;
     const { data, error } = await client.from('progress_members')
       .select('user_id,role').eq('user_id', session.user.id).maybeSingle();
     if (generation !== authGeneration) return;
@@ -166,7 +228,7 @@
       return;
     }
     member = true;
-    memberRole = data.role === 'viewer' ? 'viewer' : data.role === 'owner' ? 'owner' : 'editor';
+    memberRole = data.role === 'viewer' ? 'viewer' : data.role === 'owner' && claim.data === true ? 'owner' : 'editor';
     board.setRole(memberRole);
     workspace?.setRole(memberRole);
     const schemaProbe = await client.from('progress_projects').select('id').limit(1);
@@ -216,11 +278,13 @@
       return;
     }
     try {
-      const [cloud, extras] = await Promise.all([
+      const [cloud, extras, layout] = await Promise.all([
         remoteSnapshot(projectId),
-        remoteWorkspace(projectId)
+        remoteWorkspace(projectId), client.from('progress_layout').select('group_name,positions').eq('project_id',projectId)
       ]);
       if (!member || projectId !== board.getActiveProjectId() || generation !== authGeneration) return;
+      layoutProject = projectId; layoutOwner = !layout.error && memberRole === 'owner';
+      layoutState = Object.fromEntries((layout.data || []).map(row => [row.group_name,row.positions])); drawLayout();
       baseline = clone(cloud);
       baselineProjectId = projectId;
       contentBaseline = clone(extras.content);
