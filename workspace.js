@@ -269,6 +269,17 @@
     return button;
   }
   function editItem(item) {
+    const panel = document.getElementById('referenceEditor');
+    if (panel && item.kind === 'reference' && editing === item.id && panel.open) {
+      resetForm(ids.reference.form);
+      panel.open = false;
+      return;
+    }
+    if (editing) {
+      const previous = items.find(row => row.id === editing);
+      if (previous) resetForm(ids[previous.kind].form);
+    }
+    if (panel) panel.open = item.kind === 'reference';
     editing = item.id;
     const form = ids[item.kind].form;
     for (const name of ['title', 'body', 'url', 'category']) {
@@ -355,7 +366,7 @@
         list.appendChild(empty);
       }
       form.hidden = role === 'viewer';
-      if (editing && !rows.some(item => item.id === editing)) resetForm(form);
+      if (editing && !items.some(item => item.id === editing)) resetForm(form);
     }
   }
   function resetForm(form) {
@@ -375,6 +386,7 @@
       event.preventDefault();
       if (role === 'viewer') return;
       const form = ids[kind].form;
+      if (editing && !items.some(item => item.id === editing && item.kind === kind)) editing = null;
       const obj = Object.fromEntries(new FormData(form));
       const val = sanitizeItem({
         ...obj, kind,
@@ -391,6 +403,7 @@
       else if (items.length < MAX_ITEMS) items.push(val);
       else { alert('프로젝트당 최대 ' + MAX_ITEMS + '개 항목을 등록할 수 있어요.'); return; }
       resetForm(form);
+      if (kind === 'reference' && document.getElementById('referenceEditor')) document.getElementById('referenceEditor').open = false;
       persist(); render();
     });
   }
