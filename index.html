@@ -9,8 +9,8 @@
   <link rel="stylesheet" href="./styles.css?v=row-drag-9">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
   <script src="./app.js?v=project-links-12" defer></script>
-  <script src="./workspace.js?v=project-title-14" defer></script>
-  <script src="./sync.js?v=email-22" defer></script>
+  <script src="./workspace.js?v=google-seven-23" defer></script>
+  <script src="./sync.js?v=google-seven-23" defer></script>
   <style>
     html:not(.verified-board-owner) :is(.people-panel,.sync-panel,.workspace-data-actions,.toolbar),
     #accountControls :is(#copyTeamLink,#syncRefresh,#syncImportArea) { display: none !important; }
@@ -114,11 +114,7 @@
       </form>
       <div id="syncAuthArea" hidden>
         <form id="syncEmailForm" class="sync-email-form">
-          <label class="field-label" for="syncEmail">협업자 이메일 로그인</label>
-          <div class="sync-inline">
-            <input id="syncEmail" class="meta-input" type="email" autocomplete="email" placeholder="이메일 주소" required>
-            <button class="button button-primary" type="submit">로그인 링크 받기</button>
-          </div>
+          <button id="googleSignIn" class="button button-primary" type="submit">Google 계정으로 로그인</button>
         </form>
         <div id="syncMemberArea" class="sync-member-area" hidden>
           <span id="syncMemberLabel">로그인됨</span>
