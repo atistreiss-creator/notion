@@ -346,3 +346,8 @@
 .workspace-data-actions{align-items:stretch;flex-direction:column}
 .workspace-data-actions .button{flex:1}
 }
+
+.workspace-item{align-items:center}
+.workspace-item-actions{align-items:center;justify-content:flex-end;gap:8px}
+.workspace-small-button{box-sizing:border-box;display:inline-grid;place-items:center;height:30px;min-width:30px;padding:0 8px;line-height:1;white-space:nowrap;border-radius:9px}
+.workspace-item-actions button:first-child{min-width:44px}
