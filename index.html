@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="description" content="영상 제작 진행률을 관리하는 드래그형 작업 보드">
+  <title>영상 제작 · 진행 관리</title>
+  <link rel="stylesheet" href="./styles.css">
+  <script src="./app.js" defer></script>
+</head>
+<body>
+  <main class="workspace">
+    <header class="masthead">
+      <div class="masthead-copy">
+        <span class="eyebrow">PRODUCTION / WORKFLOW</span>
+        <h1>영상 제작 진행 현황</h1>
+        <p>작업명을 수정하고 담당자를 지정한 다음, 슬라이더를 움직여 진행률을 기록하세요.</p>
+      </div>
+      <span class="mode-pill" title="이 버전은 현재 브라우저에만 저장됩니다"><span class="mode-dot"></span> 로컬 테스트 버전</span>
+    </header>
+
+    <section class="overview" aria-label="전체 진행 현황">
+      <div class="overview-top">
+        <div>
+          <div class="section-eyebrow">OVERALL PROGRESS</div>
+          <div class="overview-title">전체 평균 진행률</div>
+        </div>
+        <strong id="overallValue" class="overview-value" aria-live="polite">0%</strong>
+      </div>
+      <div class="overall-track" role="progressbar" aria-label="전체 평균 진행률" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="overallTrack">
+        <div class="overall-fill" id="overallFill"></div>
+      </div>
+      <div class="overview-foot">
+        <span id="taskCount">0개 작업</span>
+        <span id="completeCount">0개 완료</span>
+      </div>
+    </section>
+
+    <section class="board" aria-label="작업 분담 및 진행률">
+      <div class="board-head">
+        <div>
+          <h2>작업 관리</h2>
+          <p>작업명 · 담당자 · 상태 · 진행률을 직접 변경할 수 있어요.</p>
+        </div>
+        <button class="button button-primary" id="addTask" type="button"><span aria-hidden="true">＋</span> 작업 추가</button>
+      </div>
+      <div id="taskList" class="task-list" aria-live="off"></div>
+    </section>
+
+    <section class="toolbar" aria-label="데이터 백업">
+      <div class="toolbar-text">
+        <strong>작업 데이터 관리</strong>
+        <p>이 버전은 내 브라우저에 자동 저장돼요. 협업자와 자동 동기화되지는 않아요.</p>
+      </div>
+      <div class="toolbar-actions">
+        <button id="exportData" class="button button-outline" type="button">백업 내보내기</button>
+        <button id="importData" class="button button-outline" type="button">백업 불러오기</button>
+        <input type="file" id="importFile" accept=".json,application/json" hidden>
+      </div>
+    </section>
+    <p id="notice" class="notice" role="status" aria-live="polite"></p>
+    <footer class="footer">
+      <span class="brand-mark"></span>
+      <span>Progress Board v1 · GitHub Pages 미리보기</span>
+      <span>노션 공유 저장 연동 전</span>
+    </footer>
+  </main>
+
+  <template id="taskTemplate">
+    <article class="task-card">
+      <div class="card-top">
+        <div class="title-field">
+          <label class="field-label">작업명 <span class="edit-hint">수정 가능</span></label>
+          <input type="text" maxlength="100" class="title-input" data-field="name" placeholder="작업명을 입력하세요" aria-label="작업명">
+        </div>
+        <button class="icon-button delete-button" data-action="delete" type="button" aria-label="작업 삭제" title="작업 삭제">×</button>
+      </div>
+      <div class="meta-grid">
+        <div class="meta-field">
+          <label class="field-label">담당자</label>
+          <input class="meta-input" data-field="assignee" type="text" maxlength="60" placeholder="담당자 입력" aria-label="담당자">
+        </div>
+        <div class="meta-field">
+          <label class="field-label">진행 상태</label>
+          <select class="meta-select" data-field="status" aria-label="진행 상태">
+            <option value="예정">예정</option>
+            <option value="진행 중">진행 중</option>
+            <option value="검수 중">검수 중</option>
+            <option value="완료">완료</option>
+          </select>
+        </div>
+      </div>
+      <div class="progress-heading">
+        <label class="field-label progress-label">진행률 <span class="edit-hint">1% 단위</span></label>
+        <output class="progress-value">0%</output>
+      </div>
+      <div class="slider-wrap">
+        <div class="slider-track" aria-hidden="true"><div class="slider-fill"></div></div>
+        <input class="progress-slider" type="range" min="0" max="100" step="1" value="0" data-field="progress" aria-label="작업 진행률">
+      </div>
+      <div class="slider-bottom">
+        <span>0%</span>
+        <div class="nudge-controls">
+          <button class="nudge-button" data-action="decrease" type="button" aria-label="진행률 1% 내리기">−</button>
+          <span>1%씩 조절</span>
+          <button class="nudge-button" data-action="increase" type="button" aria-label="진행률 1% 올리기">＋</button>
+        </div>
+        <span>100%</span>
+      </div>
+    </article>
+  </template>
+</body>
+</html>
