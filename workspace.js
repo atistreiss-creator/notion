@@ -73,7 +73,7 @@
       const saved = rows.map(sanitizeItem).filter(Boolean);
       const key = activeStorageKey(projectId);
       const marker = key + ':notion-import-v2';
-      if (projectId !== DEFAULT_ID || localStorage.getItem(marker)) return saved;
+      if (projectId !== DEFAULT_ID) return saved;
       const source = [
         {
           "id": "dna-initial-0",
@@ -213,7 +213,32 @@
           "body": "클라이언트 요청: 하나의 오브제가 영상 전반에 걸쳐 계속 변화하고 이어지는 연출. 기존 구성안의 자막·실사 구간·전체 흐름은 유지하되, '빛' 콘셉트는 확정된 디자인이 아님. LG U+ 도트 심볼을 중심으로 연출을 새로 제안할 예정.\n검토 순서: 형태 변화 → 실사 결합 → 전체 흐름."
         }
       ];
-      for (const item of source) {
+      const sevenMarker = key + ':seven-v1';
+      const additions = localStorage.getItem(marker) ? [] : source;
+      if (!localStorage.getItem(sevenMarker)) additions.push(...[
+  {
+    "id": "dna-seven-orbs",
+    "kind": "reference",
+    "title": "SEVEN — Orb's Journey",
+    "url": "https://www.youtube.com/watch?v=HPcAMa3SSpE",
+    "body": "SC01·04·06 | ONE DOT의 이동 방향과 속도를 이어 매치컷을 만들고, 구체가 패턴과 타이포로 변형되도록 설계한다.\nBehance https://www.behance.net/gallery/153444425/Orbs-Journey"
+  },
+  {
+    "id": "dna-seven-mono",
+    "kind": "reference",
+    "title": "SEVEN — Monochrome",
+    "url": "https://www.youtube.com/watch?v=bN-C68HoH9A",
+    "body": "SC01 | 블랙·차콜·그레이·화이트 그라데이션으로 DOT의 깊이와 공간을 잡는다. 모노톤 스타일프레임에서 형태를 확정한 뒤 브랜드 컬러와 라이팅을 적용한다."
+  },
+  {
+    "id": "dna-seven-comma",
+    "kind": "reference",
+    "title": "SEVEN — Comma",
+    "url": "https://www.youtube.com/watch?v=Q_ROGVLc4TA",
+    "body": "SC02·04·07·09 | Shape Layer로 DOT와 타이포를 연결하고 형태 변형과 이징을 설계한다.\nAE 제작 과정 https://www.youtube.com/watch?v=zLkLPfWKSRw\n00:10 Faux 3D · 03:12 Animation · 10:17 Liquid · 18:53 Styling · 26:49 Transition"
+  }
+]);
+      for (const item of additions) {
         if (saved.length >= MAX_ITEMS) break;
         if (!saved.some(row => row.id === item.id || (row.kind === item.kind &&
           (row.title === item.title || (item.url && row.url === item.url))))) {
@@ -222,6 +247,7 @@
       }
       localStorage.setItem(key, JSON.stringify(saved));
       localStorage.setItem(marker, '1');
+      localStorage.setItem(sevenMarker, '1');
       return saved;
     } catch (e) {
       console.warn('프로젝트 기록 불러오기 실패:', e);
