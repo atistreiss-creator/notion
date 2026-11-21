@@ -375,6 +375,7 @@
     editHeader.setAttribute('aria-expanded', 'false');
   }
   editHeader.addEventListener('click', () => {
+    if (role !== 'owner') return;
     if (!headerForm.hidden) return closeHeader();
     ['label','title','body'].forEach((key,i) => headerForm.elements[key].value = headerFields[i].textContent);
     headerForm.hidden = false;
@@ -384,7 +385,7 @@
   });
   headerForm.addEventListener('submit', event => {
     event.preventDefault();
-    if (role === 'viewer' || headerForm.dataset.project !== activeId) return;
+    if (role !== 'owner' || headerForm.dataset.project !== activeId) return;
     const values = new FormData(headerForm);
     const row = sanitizeItem({id:headerId,kind:'note',title:values.get('title'),category:values.get('label'),body:values.get('body')});
     if (!row) return;
@@ -399,7 +400,7 @@
     const header = items.find(x => x.id === headerId);
     const values = header ? [header.category, header.title, header.body] : defaultHeader;
     headerFields.forEach((el,i) => el.textContent = values[i]);
-    editHeader.hidden = role === 'viewer';
+    editHeader.hidden = role !== 'owner';
     if (editHeader.hidden || headerForm.dataset.project !== activeId) closeHeader();
     const title = document.getElementById('currentProjectName');
     if (title) title.textContent = projects.find(p => p.id === activeId)?.name || '프로젝트 확인 중';
@@ -485,7 +486,7 @@
     if (role !== 'owner') return;
     const project = projects.find(p => p.id === activeId);
     if (!project) return;
-    const name = prompt('프로젝트 이름', project.name);
+    const name = prompt('프로젝트 이름을 입력하세요. 이모지도 붙여넣을 수 있어요.\n예: 🎬 MULTRA Brand Film', project.name);
     if (!name?.trim()) return;
     project.name = name.trim().slice(0, 100);
     saveProjects();
