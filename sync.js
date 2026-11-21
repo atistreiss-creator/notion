@@ -366,9 +366,12 @@
   ui.importButton.addEventListener('click', async () => {
     if (!member || !client) return;
     if (!window.confirm('현재 브라우저의 작업 데이터를 팀 공유 데이터베이스에 업로드할까요?')) return;
-    baseline = { tasks: [], people: [] };
-    baselineProjectId = board.getActiveProjectId();
-    if (cloudUpgraded) contentBaseline = [];
+    // Use the latest cloud snapshot as baseline to avoid overwriting
+    // existing shared records while uploading only missing local records.
+    if (!baseline || baselineProjectId !== board.getActiveProjectId()) {
+      status('공유 데이터를 먼저 새로고침해 주세요.', 'warning');
+      return;
+    }
     ui.importArea.hidden = true;
     await pushCloud();
   });
