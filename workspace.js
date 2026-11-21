@@ -295,6 +295,7 @@
   function renderItem(item) {
     const row = document.createElement('div');
     row.className = 'workspace-item';
+    row.dataset.layoutId = item.id;
     const main = document.createElement('div');
     main.className = 'workspace-item-main';
     if (item.kind === 'checklist') {
@@ -428,6 +429,7 @@
       if (editing && !items.some(item => item.id === editing)) resetForm(form);
     }
     syncEditorButtons();
+    window.dispatchEvent(new Event('workspace:render'));
   }
   function resetForm(form) {
     editing = null;
