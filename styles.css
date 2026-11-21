@@ -36,12 +36,12 @@
 /* Progress-status color is communicated by the dropdown itself, without a dot beside the label. */
 
 
-/* All dropdowns use a consistent purple chevron with 17px right breathing room. */
+/* All dropdowns use a neutral gray chevron with 17px right breathing room. */
 .meta-select {
   -webkit-appearance: none;
   appearance: none;
   padding-right: 48px;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='12' viewBox='0 0 16 12'%3E%3Cpath d='m2 3 6 6 6-6' fill='none' stroke='%23C47AFF' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='12' viewBox='0 0 16 12'%3E%3Cpath d='m2 3 6 6 6-6' fill='none' stroke='%23A7A9BA' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 17px center;
   background-size: 15px 11px;
