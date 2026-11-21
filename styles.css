@@ -184,16 +184,7 @@
   color: #f6f2ff;
   background: #24273a;
 }
-.task-card .meta-field:first-child > .field-label::after {
-  content: "";
-  display: inline-block;
-  vertical-align: middle;
-  margin-left: 8px;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background-color: var(--person-fg);
-}
+/* Assignee labels show the name only; the selection keeps its assignee color. */
 @media(max-width:680px) {
   .people-panel { padding: 17px 16px; }
   .people-add-row { grid-template-columns: 1fr 1fr; }
