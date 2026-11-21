@@ -135,6 +135,16 @@
         <span class="workspace-count" id="workspaceCount">0개 항목</span>
       </div>
 
+      <details class="workspace-group">
+        <summary><span><span class="workspace-icon">▤</span> 프로젝트 브리프 · 메모 <small id="noteCount">0개</small></span><span class="workspace-hint">목표 · 방향 · 확정/미확정 사항</span></summary>
+        <div id="noteList" class="workspace-item-list"></div>
+        <form id="noteForm" class="workspace-add-form">
+          <input name="title" class="meta-input" maxlength="160" placeholder="메모 제목" aria-label="메모 제목" required>
+          <textarea name="body" class="workspace-textarea" maxlength="1500" rows="3" placeholder="프로젝트 개요나 주요 의사결정을 기록하세요" aria-label="프로젝트 메모"></textarea>
+          <button type="submit" class="button button-outline">+ 메모 추가</button>
+        </form>
+      </details>
+
       <details class="workspace-group" open>
         <summary><span><span class="workspace-icon">↗</span> 공유 자료 <small id="resourceCount">0개</small></span><span class="workspace-hint">Drive · 산출물 · 참고 파일</span></summary>
         <div id="resourceList" class="workspace-item-list"></div>
