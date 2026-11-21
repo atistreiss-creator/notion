@@ -14,7 +14,7 @@
     keyInput: el('syncPublishableKey'),
     authArea: el('syncAuthArea'),
     emailForm: el('syncEmailForm'),
-    emailInput: el('syncEmail'),
+    loginButton: el('googleSignIn'),
     memberArea: el('syncMemberArea'),
     memberLabel: el('syncMemberLabel'),
     importArea: el('syncImportArea'),
@@ -218,8 +218,8 @@
     const action = el('accessConnect');
     action.hidden = owner || !!currentSession;
     if (!owner && currentSession) showAccountControls();
-    action.textContent = client ? '이메일 로그인' : '보드 연결';
-    accessInfo.textContent = owner ? '이메일 인증을 마친 계정의 전체 공유 보드 권한을 설정합니다.' : currentSession ? '이 계정에는 관리자 권한이 없습니다.' : client ? '보드에 처음 접속하는 브라우저는 이메일 인증이 필요해요.' : '처음 한 번, 이 브라우저를 공유 보드에 연결해 주세요.';
+    action.textContent = client ? 'Google 로그인' : '보드 연결';
+    accessInfo.textContent = owner ? '이메일 인증을 마친 계정의 전체 공유 보드 권한을 설정합니다.' : currentSession ? '이 계정에는 관리자 권한이 없습니다.' : client ? 'Google 계정으로 로그인해 공유 보드를 여세요.' : '처음 한 번, 이 브라우저를 공유 보드에 연결해 주세요.';
     el('accessDialog').showModal();
   });
   const accountParts = ['syncStatus', 'syncKeyForm', 'syncAuthArea'].map(id => {
@@ -237,7 +237,7 @@
   });
   el('accessConnect').addEventListener('click', () => {
     showAccountControls();
-    const field = client ? ui.emailInput : ui.keyInput;
+    const field = client ? ui.loginButton : ui.keyInput;
     field.scrollIntoView({block:'center'});
     field.focus({preventScroll:true});
   });
@@ -524,28 +524,14 @@
 
 
     try {
-      const email = ui.emailInput.value.trim();
-      status('이메일 로그인 링크 발송 중…', 'loading');
-      const target = new URL(window.location.pathname, window.location.origin);
+      const target = new URL(window.location.pathname, location.origin);
       target.searchParams.set('project', board.getActiveProjectId());
-      const redirect = target.href;
-      const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(email.toLowerCase()));
-      const ownerEmail = Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2,'0')).join('') === 'f0feb7997eb349986eefe36b3048ec6111145eb42b68cbcc87322709c8a11cf1';
-      const { error } = await client.auth.signInWithOtp({
-        email,
-        options: { emailRedirectTo: redirect, shouldCreateUser: ownerEmail }
+      const { error } = await client.auth.signInWithOAuth({
+        provider: 'google', options: { redirectTo: target.href }
       });
-      if (error?.status === 429 || error?.code === 'over_email_send_rate_limit') {
-
-
-
-        status('인증 메일 발송이 일시 제한됐어요. 최근 받은 미사용 링크를 확인하거나 잠시 후 다시 시도해 주세요.', 'warning');
-        return;
-      }
-
-      status(error ? '링크 발송 실패: ' + error.message : '로그인 링크를 이메일로 보냈어요.', error ? 'error' : 'success');
+      if (error) status('Google 로그인 연결 실패 · ' + error.message, 'error');
     } catch {
-      status('메일 발송을 확인하지 못했어요. 네트워크 연결을 확인해 주세요.', 'error');
+      status('Google 로그인에 연결할 수 없어요.', 'error');
     } finally {
       send.disabled = false;
     }
