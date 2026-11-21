@@ -269,32 +269,24 @@
     return button;
   }
   function editItem(item) {
-    const panel = document.getElementById('referenceEditor');
-    if (panel && item.kind === 'reference' && panel.dataset.item === item.id && panel.open) {
-      resetForm(ids.reference.form);
-      panel.open = false;
-      syncReferenceButtons();
+    const panel = ids[item.kind].form.parentElement;
+    if (editing === item.id && panel.open) {
+      resetForm(ids[item.kind].form);
+      syncEditorButtons();
       return;
     }
-    if (editing) {
-      const previous = items.find(row => row.id === editing);
-      if (previous) resetForm(ids[previous.kind].form);
-    }
-    if (panel) {
-      panel.dataset.item = item.kind === 'reference' ? item.id : '';
-      panel.open = item.kind === 'reference';
-      syncReferenceButtons();
-    }
+    const previous = items.find(row => row.id === editing);
+    if (previous) resetForm(ids[previous.kind].form);
+    panel.open = true;
     editing = item.id;
+    syncEditorButtons();
     const form = ids[item.kind].form;
     for (const name of ['title', 'body', 'url', 'category']) {
       if (form.elements.namedItem(name)) form.elements.namedItem(name).value = item[name] || '';
     }
     const btn = form.querySelector('button[type="submit"]');
     if (btn) btn.textContent = '수정 저장';
-    if (item.kind === 'reference') return;
-    form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    form.elements.namedItem('title')?.focus();
+
   }
   function renderItem(item) {
     const row = document.createElement('div');
@@ -337,11 +329,9 @@
     controls.className = 'workspace-item-actions';
     if (role !== 'viewer') {
       const editButton = makeButton(item.title + ' 수정', '수정', () => editItem(item));
-      if (item.kind === 'reference') {
-        editButton.dataset.reference = item.id;
-        editButton.dataset.title = item.title;
-        editButton.setAttribute('aria-controls', 'referenceForm');
-      }
+      editButton.dataset.item = item.id;
+      editButton.dataset.title = item.title;
+      editButton.setAttribute('aria-controls', ids[item.kind].form.id);
       controls.appendChild(editButton);
       controls.appendChild(makeButton(item.title + ' 삭제', '×', () => {
         if (!confirm('이 항목을 삭제할까요?')) return;
@@ -352,25 +342,65 @@
     row.append(main, controls);
     return row;
   }
-  function syncReferenceButtons() {
-    const panel = document.getElementById('referenceEditor');
-    if (!panel) return;
-    for (const button of ids.reference.list.querySelectorAll('[data-reference]')) {
-      const active = panel.open && panel.dataset.item === button.dataset.reference;
-      button.textContent = active ? '닫기' : '수정';
-      button.setAttribute('aria-expanded', String(active));
-      button.setAttribute('aria-label', button.dataset.title + (active ? ' 닫기' : ' 수정'));
+  function syncEditorButtons() {
+    for (const kind of TYPES) {
+      const {list, form} = ids[kind];
+      const panel = form.parentElement;
+      for (const button of list.querySelectorAll('[data-item]')) {
+        const active = panel.open && editing === button.dataset.item;
+        button.textContent = active ? '닫기' : '수정';
+        button.setAttribute('aria-expanded', String(active));
+        button.setAttribute('aria-label', button.dataset.title + ' ' + button.textContent);
+      }
+      const summary = panel.querySelector('summary');
+      summary.dataset.addLabel ||= summary.textContent;
+      summary.textContent = panel.open && items.some(x => x.kind === kind && x.id === editing)
+        ? summary.dataset.addLabel.replace('+ ', '').replace('추가','수정') : summary.dataset.addLabel;
     }
-    panel.querySelector('summary').textContent = panel.open && panel.dataset.item ? '레퍼런스 수정' : '+ 레퍼런스 추가';
   }
-  document.getElementById('referenceEditor')?.addEventListener('toggle', event => {
-    if (!event.currentTarget.open) {
-      if (editing && editing === event.currentTarget.dataset.item) resetForm(ids.reference.form);
-      delete event.currentTarget.dataset.item;
-    }
-    syncReferenceButtons();
+  for (const kind of TYPES) {
+    const form = ids[kind].form;
+    form.parentElement.addEventListener('toggle', () => {
+      if (!form.parentElement.open && items.some(x => x.id === editing && x.kind === kind)) resetForm(form);
+      syncEditorButtons();
+    });
+  }
+  const headerId = 'project-masthead';
+  const headerFields = [...document.querySelectorAll('.masthead-copy > .eyebrow, .masthead-copy > h1, .masthead-copy > p')];
+  const defaultHeader = headerFields.map(el => el.textContent);
+  const headerForm = document.getElementById('headerForm');
+  const editHeader = document.getElementById('editHeader');
+  function closeHeader() {
+    headerForm.hidden = true;
+    editHeader.textContent = '헤드타이틀 수정';
+    editHeader.setAttribute('aria-expanded', 'false');
+  }
+  editHeader.addEventListener('click', () => {
+    if (!headerForm.hidden) return closeHeader();
+    ['label','title','body'].forEach((key,i) => headerForm.elements[key].value = headerFields[i].textContent);
+    headerForm.hidden = false;
+    headerForm.dataset.project = activeId;
+    editHeader.textContent = '닫기';
+    editHeader.setAttribute('aria-expanded', 'true');
+  });
+  headerForm.addEventListener('submit', event => {
+    event.preventDefault();
+    if (role === 'viewer' || headerForm.dataset.project !== activeId) return;
+    const values = new FormData(headerForm);
+    const row = sanitizeItem({id:headerId,kind:'note',title:values.get('title'),category:values.get('label'),body:values.get('body')});
+    if (!row) return;
+    const pos = items.findIndex(x => x.id === headerId);
+    if (pos >= 0) items[pos] = row;
+    else if (items.length < MAX_ITEMS) items.push(row);
+    else return alert('자료실이 가득 차서 저장할 수 없어요.');
+    closeHeader(); persist(); render();
   });
   function render() {
+    const header = items.find(x => x.id === headerId);
+    const values = header ? [header.category, header.title, header.body] : defaultHeader;
+    headerFields.forEach((el,i) => el.textContent = values[i]);
+    editHeader.hidden = role === 'viewer';
+    if (editHeader.hidden || headerForm.dataset.project !== activeId) closeHeader();
     if (!projects.some(p => p.id === activeId)) activeId = DEFAULT_ID;
     projectSelect.replaceChildren();
     for (const project of projects) {
@@ -380,13 +410,13 @@
       projectSelect.appendChild(option);
     }
     projectSelect.value = activeId;
-    count.textContent = items.length + '개 항목';
+    count.textContent = (items.length - Number(!!header)) + '개 항목';
     document.getElementById('createProject').disabled = role === 'viewer';
     document.getElementById('renameProject').disabled = role === 'viewer';
     for (const kind of TYPES) {
       const { list, form, count } = ids[kind];
       list.replaceChildren();
-      const rows = items.filter(item => item.kind === kind);
+      const rows = items.filter(item => item.kind === kind && item.id !== headerId);
       count.textContent = rows.length + '개';
       rows.forEach(item => list.appendChild(renderItem(item)));
       if (!rows.length) {
@@ -395,13 +425,14 @@
         empty.textContent = '등록된 항목이 없습니다.';
         list.appendChild(empty);
       }
-      form.hidden = role === 'viewer';
+      form.parentElement.hidden = role === 'viewer';
       if (editing && !items.some(item => item.id === editing)) resetForm(form);
     }
-    syncReferenceButtons();
+    syncEditorButtons();
   }
   function resetForm(form) {
     editing = null;
+    form.parentElement.open = false;
     form.reset();
     const button = form.querySelector('button[type="submit"]');
     if (button) {
