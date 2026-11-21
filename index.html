@@ -20,7 +20,7 @@
         <h1>영상 제작 진행 현황</h1>
         <p>작업명을 수정하고 담당자를 지정한 다음, 슬라이더를 움직여 진행률을 기록하세요.</p>
       </div>
-      <span class="mode-pill" title="이 버전은 현재 브라우저에만 저장됩니다"><span class="mode-dot"></span> 로컬 테스트 버전</span>
+      <span class="mode-pill" id="modePill"><span class="mode-dot"></span><span id="modeLabel">로컬 저장 모드</span></span>
     </header>
 
     <section class="project-switcher" aria-label="프로젝트 선택">
@@ -196,7 +196,7 @@
         <div>
           <button type="button" class="button button-outline" id="exportWorkspace">자료 백업</button>
           <button type="button" class="button button-outline" id="importWorkspace">자료 가져오기</button>
-          <input type="file" id="workspaceImportFile" accept=".json,application/json" hidden>
+          <input type="file" id="workspaceImportFile" accept=".json,.md,.markdown,.txt,application/json,text/markdown,text/plain" hidden>
         </div>
       </div>
     </section>
@@ -204,7 +204,7 @@
     <section class="toolbar" aria-label="데이터 백업">
       <div class="toolbar-text">
         <strong>작업 데이터 관리</strong>
-        <p>이 버전은 내 브라우저에 자동 저장돼요. 협업자와 자동 동기화되지는 않아요.</p>
+        <p id="storageDescription">연결 전에는 브라우저에 자동 저장됩니다. 공유 로그인 후 Supabase로 동기화됩니다.</p>
       </div>
       <div class="toolbar-actions">
         <button id="exportData" class="button button-outline" type="button">백업 내보내기</button>
