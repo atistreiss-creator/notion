@@ -86,6 +86,7 @@ function refreshProgress(card, task) {
 function changeTask(task, key, value, card) {
   task[key] = value;
   if (key === 'progress') refreshProgress(card, task);
+  if (key === 'status') card.dataset.status = value;
   if (key === 'progress' || key === 'status') updateOverview();
   save();
 }
@@ -100,6 +101,7 @@ function makeCard(task) {
   title.value = task.name;
   assignee.value = task.assignee;
   status.value = task.status;
+  node.dataset.status = task.status;
   refreshProgress(node, task);
 
   title.addEventListener('input', () => {
