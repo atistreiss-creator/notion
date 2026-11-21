@@ -362,3 +362,6 @@
 @media(max-width:680px){.workspace-group summary{grid-template-columns:minmax(0,1fr)}}
 
 .workspace-item-list .inline-editor{margin:0;padding:14px 0 18px;border-bottom:1px solid #34364b}
+
+.assignee-menu summary{align-content:center;min-height:41px;height:auto;padding-block:9px;overflow-wrap:anywhere;cursor:pointer}
+.assignee-menu label{display:flex;align-items:center;gap:8px;padding:7px 12px;cursor:pointer;font-size:13px}
