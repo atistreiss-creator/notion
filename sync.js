@@ -117,43 +117,71 @@
   for (const [group,nodes] of Object.entries(groups)) {
     nodes.forEach(node => node.dataset.layoutId = group === 'sections' ? node.classList[0] : node.querySelector('small').id);
   }
+  const itemKinds = ['note','resource','reference','feedback','checklist'];
+  function itemOrders() {
+    return (layoutState.resources || []).find(x => x && typeof x === 'object')?.items || {};
+  }
   function nodesFor(group) {
+    if (itemKinds.includes(group)) return [...el(group+'List').children].filter(n => n.classList.contains('workspace-item'));
     return group === 'tasks' ? [...document.querySelectorAll('#taskList > [data-layout-id]')] : groups[group];
+  }
+  let blockedStart = false;
+  document.addEventListener('pointerdown', event => {
+    blockedStart = !!event.target.closest('input,textarea,select,button,a,label,form');
+  },true);
+  function clearMarker() {
+    document.querySelectorAll('.drop-before,.drop-after').forEach(n => n.classList.remove('drop-before','drop-after'));
   }
   function drawLayout() {
     const active = layoutProject === board.getActiveProjectId();
-    for (const group of ['sections','resources','tasks']) {
+    for (const group of ['sections','resources','tasks',...itemKinds]) {
       const nodes = nodesFor(group);
       if (!nodes.length) continue;
-      const order = active && Array.isArray(layoutState[group]) ? layoutState[group] : [];
+      const stored = itemKinds.includes(group) ? itemOrders()[group] : layoutState[group];
+      const order = active && Array.isArray(stored) ? stored : [];
       const byId = new Map(nodes.map(n => [n.dataset.layoutId,n]));
       const ordered = [...new Set([...order.map(id => byId.get(id)).filter(Boolean), ...nodes])];
       const parent = nodes[0].parentElement;
       const current = [...parent.children].filter(n => byId.get(n.dataset.layoutId) === n);
       if (ordered.some((node,i) => node !== current[i])) {
-        const next = current[current.length-1].nextSibling;
+        const inline = itemKinds.includes(group) && parent.querySelector('.inline-editor');
+        const editingRow = inline && inline.previousElementSibling;
+        const next = inline && current.at(-1) === editingRow ? inline.nextSibling : current.at(-1).nextSibling;
         for (const node of ordered) parent.insertBefore(node,next);
+        if (editingRow) editingRow.after(inline);
       }
-      ordered.forEach((node,index) => {
-        let handle = node.querySelector(':scope > .layout-handle, :scope > summary > .layout-handle');
-        if (!active || !layoutOwner) { handle?.remove(); return; }
-        if (handle) return;
-        handle = document.createElement('button');
-        handle.type='button'; handle.className='workspace-small-button layout-handle'; handle.textContent='⠿ 순서 이동';
-        handle.title='드래그하거나 위·아래 방향키로 이동'; handle.draggable=true;
-        handle.onclick=e=>{e.preventDefault();e.stopPropagation();};
-        handle.ondragstart=e=>{e.stopPropagation(); dragging={group,node};e.dataTransfer.setData('text/plain','move');};
-        handle.ondragend=()=>dragging=null;
-        handle.onkeydown=e=>{
-          if (!['ArrowUp','ArrowDown'].includes(e.key)) return;
-          e.preventDefault(); e.stopPropagation();
-          const siblings=[...parent.children].filter(n=>nodesFor(group).includes(n));
-          const target=siblings[siblings.indexOf(node)+(e.key==='ArrowUp'?-1:1)];
-          if(target) void moveLayout(group,node,target);
+      ordered.forEach(node => {
+        const enabled = active && layoutOwner;
+        node.draggable = enabled;
+        node.classList.toggle('can-reorder', enabled);
+        if (!enabled) { node.removeAttribute('tabindex'); return; }
+        node.tabIndex = 0;
+        node.onkeydown = event => {
+          if (event.target !== node || !['ArrowUp','ArrowDown'].includes(event.key)) return;
+          event.preventDefault();
+          const siblings = [...parent.children].filter(n => nodesFor(group).includes(n));
+          const target = siblings[siblings.indexOf(node) + (event.key === 'ArrowUp' ? -1 : 1)];
+          if (target) void moveLayout(group,node,target);
         };
-        node.ondragover=e=>{if(dragging?.group===group){e.preventDefault();e.stopPropagation();}};
-        node.ondrop=e=>{if(dragging?.group!==group)return;e.preventDefault();e.stopPropagation();void moveLayout(group,dragging.node,node);dragging=null;};
-        (node.matches('details') ? node.querySelector('summary') : node).prepend(handle);
+        node.ondragstart = event => {
+          if (event.target !== node) return;
+          event.stopPropagation();
+          if (!layoutOwner || blockedStart) { event.preventDefault(); return; }
+          dragging = {group,node};
+          event.dataTransfer.effectAllowed = 'move';
+          event.dataTransfer.setData('text/plain',node.dataset.layoutId);
+        };
+        node.ondragend = () => { dragging = null; clearMarker(); };
+        node.ondragover = event => {
+          if (!dragging || dragging.group !== group || node === dragging.node) return;
+          event.preventDefault(); event.stopPropagation(); clearMarker();
+          node.classList.add(dragging.node.compareDocumentPosition(node) & 4 ? 'drop-after' : 'drop-before');
+        };
+        node.ondrop = event => {
+          if (dragging?.group !== group) return;
+          event.preventDefault(); event.stopPropagation(); clearMarker();
+          void moveLayout(group,dragging.node,node); dragging=null;
+        };
       });
     }
   }
@@ -163,11 +191,18 @@
     const ids=[...node.parentElement.children].filter(n=>nodesFor(group).includes(n)).map(n=>n.dataset.layoutId);
     const dest=ids.indexOf(target.dataset.layoutId);
     ids.splice(ids.indexOf(node.dataset.layoutId),1);ids.splice(dest,0,node.dataset.layoutId);
-    const {error}=await client.from('progress_layout').upsert({project_id:project,group_name:group,positions:ids});
+    const inner = itemKinds.includes(group);
+    const key = inner ? 'resources' : group;
+    const positions = key !== 'resources' ? ids : [
+      ...(inner ? (layoutState.resources || []).filter(x=>typeof x==='string') : ids),
+      {items: inner ? {...itemOrders(), [group]:ids} : itemOrders()}
+    ];
+    const {error}=await client.from('progress_layout').upsert({project_id:project,group_name:key,positions});
     if(error){board.setNotice('순서를 저장하지 못했습니다.');return;}
-    if(project===layoutProject){layoutState[group]=ids;drawLayout();}
+    if(project===layoutProject){layoutState[key]=positions;drawLayout();}
   }
   window.addEventListener('progress:render',drawLayout);
+  window.addEventListener('workspace:render',drawLayout);
   const accessForm = el('accessForm');
   const accessInfo = el('accessInfo');
   el('accessTag').addEventListener('click', () => {
