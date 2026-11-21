@@ -7,7 +7,9 @@
   <meta name="description" content="영상 제작 진행률을 관리하는 드래그형 작업 보드">
   <title>영상 제작 · 진행 관리</title>
   <link rel="stylesheet" href="./styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js" defer></script>
   <script src="./app.js" defer></script>
+  <script src="./sync.js" defer></script>
 </head>
 <body>
   <main class="workspace">
@@ -34,6 +36,45 @@
       <div class="overview-foot">
         <span id="taskCount">0개 작업</span>
         <span id="completeCount">0개 완료</span>
+      </div>
+    </section>
+
+    <section class="sync-panel" aria-label="협업 자동 동기화" id="syncPanel">
+      <div class="sync-head">
+        <div>
+          <div class="section-eyebrow">TEAM SYNC</div>
+          <h2>공유 작업 데이터</h2>
+          <p>로그인하면 정민수·김소영의 변경 사항을 같은 데이터베이스에서 관리해요.</p>
+        </div>
+        <div class="sync-status" id="syncStatus" role="status">연결 설정 전</div>
+      </div>
+      <form id="syncKeyForm" class="sync-key-form">
+        <label class="field-label" for="syncPublishableKey">Supabase Publishable Key (공개용 키만 입력)</label>
+        <div class="sync-inline">
+          <input id="syncPublishableKey" class="meta-input" type="text" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="sb_publishable_... 또는 anon public key" required>
+          <button class="button button-outline" type="submit">연결 설정</button>
+        </div>
+        <p class="sync-tip">service_role / secret 키를 절대 입력하지 마세요. 이 설정은 현재 브라우저에만 저장됩니다.</p>
+      </form>
+      <div id="syncAuthArea" hidden>
+        <form id="syncEmailForm" class="sync-email-form">
+          <label class="field-label" for="syncEmail">협업자 이메일 로그인</label>
+          <div class="sync-inline">
+            <input id="syncEmail" class="meta-input" type="email" autocomplete="email" placeholder="이메일 주소" required>
+            <button class="button button-primary" type="submit">로그인 링크 받기</button>
+          </div>
+        </form>
+        <div id="syncMemberArea" class="sync-member-area" hidden>
+          <span id="syncMemberLabel">로그인됨</span>
+          <div class="sync-actions">
+            <button type="button" class="button button-outline" id="syncRefresh">새로고침</button>
+            <button type="button" class="button button-outline" id="syncSignOut">로그아웃</button>
+          </div>
+        </div>
+        <div id="syncImportArea" class="sync-import-area" hidden>
+          <p>공유 작업표가 비어 있어요. 지금 브라우저의 작업 내용을 안전하게 공유 데이터로 올릴 수 있습니다.</p>
+          <button id="syncImportLocal" class="button button-primary" type="button">브라우저 작업을 공유 데이터로 업로드</button>
+        </div>
       </div>
     </section>
 
