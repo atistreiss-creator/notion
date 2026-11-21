@@ -23,7 +23,7 @@ create or replace function public.progress_set_access(target_email text, access_
 returns void language plpgsql security definer set search_path='' as $$
 declare target uuid;
 begin
- if not exists(select 1 from public.progress_members where user_id=auth.uid() and role='owner') then raise exception '관리자만 변경할 수 있습니다.'; end if;
+ if not public.progress_is_designated_owner() or not exists(select 1 from public.progress_members where user_id=auth.uid() and role='owner') then raise exception '관리자만 변경할 수 있습니다.'; end if;
  if access_role is null or access_role not in ('editor','viewer') then raise exception '허용되지 않는 권한입니다.'; end if;
  select id into strict target from auth.users where lower(email)=lower(trim(target_email)) and email_confirmed_at is not null;
  insert into public.progress_members as m(user_id,role) values(target,access_role)
@@ -33,4 +33,32 @@ exception when no_data_found then raise exception '먼저 해당 이메일로 �
 end $$;
 revoke all on function public.progress_set_access(text,text) from public,anon;
 grant execute on function public.progress_set_access(text,text) to authenticated;
+-- Bind administrative functions to the verified owner, including after an email change.
+create or replace function public.progress_is_designated_owner() returns boolean
+language sql stable security definer set search_path='' as $
+ select exists(select 1 from auth.users where id=auth.uid() and email_confirmed_at is not null
+ and pg_catalog.encode(pg_catalog.sha256(pg_catalog.convert_to(lower(email),'UTF8')),'hex')='f0feb7997eb349986eefe36b3048ec6111145eb42b68cbcc87322709c8a11cf1')
+$;
+revoke all on function public.progress_is_designated_owner() from public,anon;
+grant execute on function public.progress_is_designated_owner() to authenticated;
+create or replace function public.progress_claim_owner() returns boolean
+language plpgsql security definer set search_path='' as $
+begin
+ if not public.progress_is_designated_owner() then return false; end if;
+ insert into public.progress_members(user_id,role) values(auth.uid(),'owner')
+ on conflict(user_id) do update set role='owner';
+ return true;
+end $;
+revoke all on function public.progress_claim_owner() from public,anon;
+grant execute on function public.progress_claim_owner() to authenticated;
+create table if not exists public.progress_layout(project_id text not null, group_name text not null
+ check(group_name in ('tasks','sections','resources')), positions jsonb not null check(jsonb_typeof(positions)='array' and jsonb_array_length(positions)<=100),
+ primary key(project_id,group_name));
+alter table public.progress_layout enable row level security;
+revoke all on public.progress_layout from public,anon,authenticated;
+grant select,insert,update on public.progress_layout to authenticated;
+drop policy if exists layout_read on public.progress_layout;
+create policy layout_read on public.progress_layout for select to authenticated using(exists(select 1 from public.progress_members where user_id=auth.uid()));
+drop policy if exists layout_write on public.progress_layout;
+create policy layout_write on public.progress_layout for all to authenticated using(public.progress_is_designated_owner()) with check(public.progress_is_designated_owner());
 commit;
