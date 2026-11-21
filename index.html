@@ -6,9 +6,9 @@
   <meta name="color-scheme" content="dark">
   <meta name="description" content="영상 제작 진행률을 관리하는 드래그형 작업 보드">
   <title>영상 제작 · 진행 관리</title>
-  <link rel="stylesheet" href="./styles.css?v=dna-inline-5">
+  <link rel="stylesheet" href="./styles.css?v=team-6">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
-  <script src="./app.js?v=20261122-6" defer></script>
+  <script src="./app.js?v=team-6" defer></script>
   <script src="./workspace.js?v=dna-inline-5" defer></script>
   <script src="./sync.js?v=20261122-6" defer></script>
 </head>
@@ -250,7 +250,7 @@
       <div class="meta-grid">
         <div class="meta-field">
           <label class="field-label">담당자</label>
-          <select class="meta-select assignee-select" data-field="assignee" aria-label="담당자"><option value="">미지정</option></select>
+          <details class="assignee-menu" data-field="assignee"><summary class="meta-select">미지정</summary></details>
         </div>
         <div class="meta-field">
           <label class="field-label">진행 상태</label>
