@@ -68,6 +68,78 @@
   function loadItems(projectId) {
     try {
       const raw = localStorage.getItem(activeStorageKey(projectId));
+      if (!raw && projectId === DEFAULT_ID) {
+        const initialItems = [
+          [
+            "reference",
+            "Spherikal — Ion Lucin",
+            "https://vimeo.com/39792837",
+            "도트의 분열·집합·형태 변화 참고"
+          ],
+          [
+            "reference",
+            "Circle HQ Screen — BUCK",
+            "https://www.buck.co/work/circle-hq-screen",
+            "그래픽에서 실사로 넘어가는 전환 참고"
+          ],
+          [
+            "reference",
+            "MULTRA Brand Film",
+            "https://vimeo.com/1135619204",
+            "씬 사이의 움직임과 편집 리듬 참고"
+          ],
+          [
+            "checklist",
+            "협업자 편집 권한 확인",
+            "",
+            ""
+          ],
+          [
+            "checklist",
+            "레퍼런스별 모션·전환 포인트 합의",
+            "",
+            ""
+          ],
+          [
+            "checklist",
+            "10개 씬 필수 자막 확인",
+            "",
+            ""
+          ],
+          [
+            "checklist",
+            "씬 연결 구조와 주요 연출 방향 합의",
+            "",
+            ""
+          ],
+          [
+            "checklist",
+            "무채색 레이아웃과 모션 블로킹 검토",
+            "",
+            ""
+          ],
+          [
+            "checklist",
+            "실제 업무 영상 선별 및 사용 범위 확인",
+            "",
+            ""
+          ],
+          [
+            "checklist",
+            "사운드·타이포·타이틀·로고 확인",
+            "",
+            ""
+          ],
+          [
+            "checklist",
+            "가독성·러닝타임·납품 포맷 확인",
+            "",
+            ""
+          ]
+        ];
+        return initialItems.map(([kind, title, url, body], index) =>
+          sanitizeItem({ id: 'dna-initial-' + index, kind, title, url, body }, index));
+      }
       if (!raw) return [];
       const rows = JSON.parse(raw);
       if (!Array.isArray(rows) || rows.length > MAX_ITEMS) throw new Error('Invalid content list');
