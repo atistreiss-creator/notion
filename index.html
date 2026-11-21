@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="./styles.css?v=row-drag-9">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
   <script src="./app.js?v=project-links-12" defer></script>
-  <script src="./workspace.js?v=project-links-12" defer></script>
+  <script src="./workspace.js?v=project-title-13" defer></script>
   <script src="./sync.js?v=project-links-12" defer></script>
   <style>
     html:not(.verified-board-owner) :is(.people-panel,.sync-panel,.workspace-data-actions,.toolbar),
@@ -17,8 +17,12 @@
     [data-owner-panel][hidden] { display: none !important; }
     #accessDialog { width: max-content; min-width: min(420px, calc(100vw - 32px)); max-width: calc(100vw - 32px); }
     #accessInfo { white-space: nowrap; max-width: 100%; overflow-x: auto; }
-    .verified-board-owner #currentProjectName { display:none; }
-    #currentProjectName { display:block; font-size:1.1rem; }
+    .project-switcher { display:block; padding:16px 0 22px; background:transparent; border:0; border-bottom:1px solid #39364d; border-radius:0; }
+    #currentProjectName { margin:0; font-size:clamp(2rem,5vw,3.75rem); line-height:1.12; font-weight:850; letter-spacing:-.045em; overflow-wrap:anywhere; }
+    #projectAdmin { margin-top:12px; }
+    #projectAdmin summary { cursor:pointer; width:fit-content; }
+    .project-admin-tools { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:10px; }
+    html:not(.verified-board-owner) :is(#editHeader,#headerForm) { display:none!important; }
   </style>
 </head>
 <body>
@@ -30,7 +34,7 @@
         <span class="eyebrow">PRODUCTION / WORKFLOW</span>
         <h1>영상 제작 진행 현황</h1>
         <p>작업명을 수정하고 담당자를 지정한 다음, 슬라이더를 움직여 진행률을 기록하세요.</p>
-        <button type="button" class="workspace-small-button" id="editHeader" aria-controls="headerForm" aria-expanded="false">헤드타이틀 수정</button>
+        <button type="button" class="workspace-small-button" hidden id="editHeader" aria-controls="headerForm" aria-expanded="false">헤드타이틀 수정</button>
         <form id="headerForm" class="workspace-add-form" hidden>
           <label>영문 라벨<input class="meta-input" name="label" maxlength="60"></label>
           <label>제목<input class="meta-input" name="title" maxlength="160" required></label>
@@ -52,15 +56,17 @@
 
     <section class="project-switcher" aria-label="프로젝트 선택">
       <div class="project-choice">
-        <label class="field-label" for="projectSelect">현재 프로젝트</label>
-        <strong id="currentProjectName" aria-live="polite">현재 프로젝트</strong>
+        <div class="field-label">현재 프로젝트</div>
+        <h2 id="currentProjectName" aria-live="polite"></h2>
+      </div>
+      <details id="projectAdmin" data-owner-panel hidden><summary>프로젝트 관리</summary><div class="project-admin-tools">
         <select data-owner-panel hidden id="projectSelect" class="meta-select project-select" aria-label="현재 프로젝트">
           <option value="lg-u-dna">LG U+ 1등 DNA 시상식</option>
         </select>
-      </div>
       <button class="button button-outline" data-owner-panel hidden id="createProject" type="button">+ 새 프로젝트</button>
       <button class="button button-outline" data-owner-panel hidden id="renameProject" type="button">이름 변경</button>
       <button data-owner-panel hidden class="button button-outline" id="copyProjectLink" type="button">프로젝트 링크 복사</button>
+      </div></details>
     </section>
 
     <section class="overview" aria-label="전체 진행 현황">
@@ -250,10 +256,9 @@
       </div>
     </section>
     <p id="notice" class="notice" role="status" aria-live="polite"></p>
-    <footer class="footer">
+    <footer class="footer" data-owner-panel hidden>
       <span class="brand-mark"></span>
       <span>Progress Board v2.0 · 협업 준비 버전</span>
-      <span>노션 공유 저장 연동 전</span>
     </footer>
   </main>
 
