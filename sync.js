@@ -109,8 +109,25 @@
     }
   }
 
+  const accessForm = el('accessForm');
+  const accessInfo = el('accessInfo');
+  el('accessTag').addEventListener('click', () => {
+    const owner = member && memberRole === 'owner';
+    accessForm.hidden = !owner;
+    accessInfo.textContent = owner ? '이메일 인증을 마친 계정의 전체 공유 보드 권한을 설정합니다.' : '권한 설정은 공유 연결 후 관리자 계정으로 로그인하면 열립니다.';
+    el('accessDialog').showModal();
+  });
+  accessForm.addEventListener('submit', async event => {
+    event.preventDefault();
+    if (!client || !member || memberRole !== 'owner') return;
+    const fields = new FormData(accessForm);
+    const {error} = await client.rpc('progress_set_access',{target_email:fields.get('email'),access_role:fields.get('role')});
+    accessInfo.textContent = error ? '권한 적용 실패 · ' + error.message : '권한을 적용했습니다.';
+  });
   async function handleSession(session) {
     const generation = ++authGeneration;
+    if (el('accessDialog').open) el('accessDialog').close();
+    accessForm.reset();
     currentSession = session;
     member = false;
     baseline = null;
