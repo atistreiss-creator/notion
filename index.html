@@ -10,10 +10,13 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
   <script src="./app.js?v=layout-7" defer></script>
   <script src="./workspace.js?v=row-drag-9" defer></script>
-  <script src="./sync.js?v=owner-panels-10" defer></script>
+  <script src="./sync.js?v=owner-panels-11" defer></script>
   <style>
     html:not(.verified-board-owner) :is(.people-panel,.sync-panel,.workspace-data-actions,.toolbar),
     #accountControls :is(#copyTeamLink,#syncRefresh,#syncImportArea) { display: none !important; }
+    [data-owner-panel][hidden] { display: none !important; }
+    #accessDialog { width: max-content; min-width: min(420px, calc(100vw - 32px)); max-width: calc(100vw - 32px); }
+    #accessInfo { white-space: nowrap; max-width: 100%; overflow-x: auto; }
   </style>
 </head>
 <body>
@@ -73,7 +76,7 @@
       </div>
     </section>
 
-    <section class="sync-panel" aria-label="협업 자동 동기화" id="syncPanel">
+    <section class="sync-panel" data-owner-panel hidden aria-label="협업 자동 동기화" id="syncPanel">
       <div class="sync-head">
         <div>
           <div class="section-eyebrow">TEAM SYNC</div>
@@ -112,7 +115,7 @@
       </div>
     </section>
 
-    <section class="people-panel" aria-label="작업자 관리">
+    <section class="people-panel" data-owner-panel hidden aria-label="작업자 관리">
       <div class="people-heading">
         <div>
           <h2>작업자 관리</h2>
@@ -223,7 +226,7 @@
       <div id="taskList" class="task-list" aria-live="off"></div>
     </section>
 
-      <div class="workspace-data-actions">
+      <div class="workspace-data-actions" data-owner-panel hidden>
         <span>프로젝트 기록 백업 및 노션 자료 이전</span>
         <div>
           <button type="button" class="button button-outline" id="exportWorkspace">자료 백업</button>
@@ -231,7 +234,7 @@
           <input type="file" id="workspaceImportFile" accept=".json,.md,.markdown,.txt,application/json,text/markdown,text/plain" hidden>
         </div>
       </div>
-    <section class="toolbar" aria-label="데이터 백업">
+    <section class="toolbar" data-owner-panel hidden aria-label="데이터 백업">
       <div class="toolbar-text">
         <strong>작업 데이터 관리</strong>
         <p id="storageDescription">연결 전에는 브라우저에 자동 저장됩니다. 공유 로그인 후 Supabase로 동기화됩니다.</p>
