@@ -6,11 +6,11 @@
   <meta name="color-scheme" content="dark">
   <meta name="description" content="영상 제작 진행률을 관리하는 드래그형 작업 보드">
   <title>영상 제작 · 진행 관리</title>
-  <link rel="stylesheet" href="./styles.css?v=team-6">
+  <link rel="stylesheet" href="./styles.css?v=access-8">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
   <script src="./app.js?v=layout-7" defer></script>
   <script src="./workspace.js?v=dna-inline-5" defer></script>
-  <script src="./sync.js?v=layout-7" defer></script>
+  <script src="./sync.js?v=access-8" defer></script>
 </head>
 <body>
   <main class="workspace">
@@ -30,12 +30,12 @@
         </form>
       </div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="mode-pill" id="modePill"><span class="mode-dot"></span><span id="modeLabel">로컬 저장 모드</span></span><button type="button" class="mode-pill" id="accessTag">권한 관리</button></div>
-      <dialog id="accessDialog" style="background:#202135;color:#f6f2ff;border:1px solid #514763;border-radius:16px;width:min(360px,85vw)">
-        <h2>공유 보드 권한 관리</h2><p id="accessInfo">공유 연결 후 관리자 계정으로 로그인해 주세요.</p>
+      <dialog id="accessDialog" aria-labelledby="accessHeading">
+        <h2 id="accessHeading">권한 관리</h2><p id="accessInfo">공유 연결 후 관리자 계정으로 로그인해 주세요.</p>
         <form id="accessForm" hidden><label>계정 이메일<input type="email" class="meta-input" name="email" required></label>
         <label>권한<select name="role" class="meta-select"><option value="viewer">뷰어</option><option value="editor">편집자</option></select></label>
         <button class="button button-primary">권한 적용</button></form>
-        <form method="dialog"><button class="button button-outline">닫기</button></form>
+        <form method="dialog" class="access-footer"><button class="button button-outline">닫기</button><button type="button" class="button button-primary" id="accessConnect" hidden>보드 연결</button></form>
       </dialog>
     </header>
 
