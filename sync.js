@@ -408,7 +408,7 @@
     const peopleDelta = changedRows(local.people, baseline.people, 'name');
     const contentDelta = changedRows(localContent, contentBaseline, 'id');
     try {
-      if (cloudUpgraded && workspace) {
+      if (cloudUpgraded && workspace && memberRole === 'owner') {
         const project = workspace.getProjects().find(p => p.id === projectId);
         if (!project) throw new Error('현재 프로젝트를 찾을 수 없습니다.');
         const result = await client.from('progress_projects').upsert(project, { onConflict: 'id' });
@@ -504,7 +504,9 @@
     if (!client) return;
     const email = ui.emailInput.value.trim();
     status('이메일 로그인 링크 발송 중…', 'loading');
-    const redirect = window.location.origin + window.location.pathname;
+    const target = new URL(window.location.pathname, window.location.origin);
+    target.searchParams.set('project', board.getActiveProjectId());
+    const redirect = target.href;
     const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(email.toLowerCase()));
     const ownerEmail = Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2,'0')).join('') === 'f0feb7997eb349986eefe36b3048ec6111145eb42b68cbcc87322709c8a11cf1';
     const { error } = await client.auth.signInWithOtp({
@@ -513,11 +515,13 @@
     });
     status(error ? '링크 발송 실패: ' + error.message : '로그인 링크를 이메일로 보냈어요.', error ? 'error' : 'success');
   });
+  el('copyProjectLink')?.addEventListener('click', () => ui.copyTeamLink.click());
   ui.copyTeamLink?.addEventListener('click', async () => {
     const key = localStorage.getItem(KEY_STORAGE) || '';
     if (!keyIsPublic(key) || !member) return;
     const url = new URL(window.location.origin + window.location.pathname);
     url.searchParams.set('key', key);
+    url.searchParams.set('project', board.getActiveProjectId());
     try {
       await navigator.clipboard.writeText(url.href);
       status('팀 접속 링크를 복사했습니다. 초대된 이메일만 로그인할 수 있어요.', 'success');
@@ -560,6 +564,7 @@
     if (member) void pullCloud(true);
   });
   window.addEventListener('workspace:projects-changed', event => {
+    if (memberRole !== 'owner') return;
     if (!cloudUpgraded || !member || memberRole === 'viewer') return;
     const project = event.detail?.project;
     if (!project?.id || !project?.name) return;
