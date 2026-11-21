@@ -230,6 +230,7 @@ function renderPeople() {
 }
 function makeCard(task) {
   const card = template.content.firstElementChild.cloneNode(true);
+  card.dataset.layoutId = task.id;
   const title = card.querySelector('[data-field="name"]');
   const assignee = card.querySelector('[data-field="assignee"]');
   const status = card.querySelector('[data-field="status"]');
@@ -292,6 +293,7 @@ function render() {
     list.appendChild(frag);
   }
   updateOverview();
+  window.dispatchEvent(new Event('progress:render'));
 }
 document.getElementById('addPersonForm').addEventListener('submit', event => {
   event.preventDefault();
