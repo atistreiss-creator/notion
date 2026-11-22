@@ -233,9 +233,25 @@
     ui.status.dataset.state = kind;
     const label = el('modeLabel');
     const desc = el('storageDescription');
-    if (label) label.textContent = kind === 'success' && member
-      ? (cloudUpgraded ? '팀 공유 모드' : '작업 공유 모드')
-      : member ? (kind === 'error' ? '동기화 오류' : text) : '이 브라우저에만 저장';
+    const pill = el('modePill');
+    if (pill) {
+      pill.dataset.state = kind;
+      pill.title = '현재 계정 및 공유 연결 상태를 확인하려면 누르세요.\n' + text;
+    }
+    if (label) {
+      const connected = kind === 'success' && member && cloudUpgraded &&
+        baselineProjectId === board.getActiveProjectId();
+      const roleLabel = memberRole === 'owner' ? '관리자' :
+        memberRole === 'editor' ? '편집자' : memberRole === 'viewer' ? '뷰어' : '사용자';
+      label.textContent = kind === 'error' ? '동기화 오류 · 확인 필요'
+        : kind === 'loading' ? '공유 데이터 확인 중'
+        : !currentSession ? '로그인 필요'
+        : !member ? '접근 승인 대기'
+        : !cloudUpgraded ? '공유 설정 확인 필요'
+        : connected ? (memberRole === 'viewer' ? '뷰어 · 읽기 전용'
+          : roleLabel + ' · 공유 연결됨')
+        : '공유 상태 확인 필요';
+    }
     if (desc) desc.textContent = kind === 'success' && member
       ? (cloudUpgraded
         ? '프로젝트별 작업과 자료는 Supabase에 자동 저장됩니다.'
@@ -479,6 +495,7 @@
 
   const accessForm = el('accessForm');
   const accessInfo = el('accessInfo');
+  el('modePill').addEventListener('click', () => el('accessTag').click());
   el('accessTag').addEventListener('click', () => {
     const owner = member && memberRole === 'owner';
     if (owner) void loadTeamAccounts();
@@ -487,7 +504,15 @@
     action.hidden = owner || !!currentSession;
     if (!owner && currentSession) showAccountControls();
     action.textContent = client ? 'Google 로그인' : '보드 연결';
-    accessInfo.textContent = owner ? '이메일 인증을 마친 계정의 전체 공유 보드 권한을 설정합니다.' : currentSession ? '이 계정에는 관리자 권한이 없습니다.' : client ? 'Google 계정으로 로그인해 공유 보드를 여세요.' : '처음 한 번, 이 브라우저를 공유 보드에 연결해 주세요.';
+    const account = currentSession?.user?.email || '미로그인';
+    accessInfo.textContent = owner
+      ? account + ' · 관리자 계정 · 팀원과 편집 권한을 관리할 수 있습니다.'
+      : currentSession && member
+      ? account + ' · ' + teamAccountRole(memberRole) + ' 계정 · 공유 상태를 확인할 수 있습니다.'
+      : currentSession
+      ? account + ' · 로그인 완료, 관리자 승인 대기 중'
+      : client ? 'Google 계정으로 로그인해 공유 보드를 여세요.'
+      : '처음 한 번, 이 브라우저를 공유 보드에 연결해 주세요.';
     el('accessDialog').showModal();
   });
   const accountParts = ['syncStatus', 'syncKeyForm', 'syncAuthArea'].map(id => {
