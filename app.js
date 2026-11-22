@@ -38,7 +38,7 @@ const peopleList = document.getElementById('peopleList');
 const template = document.getElementById('taskTemplate');
 let tasks = readTasks();
 let people = readPeople();
-let role = 'local';
+let role = 'viewer'; // Require verified membership before editing team content.
 
 function clone(data) {
   return JSON.parse(JSON.stringify(data));
@@ -297,6 +297,7 @@ function render() {
 }
 document.getElementById('addPersonForm').addEventListener('submit', event => {
   event.preventDefault();
+  if (role === 'viewer') return;
   const input = document.getElementById('newPersonName');
   const select = document.getElementById('newPersonColor');
   const name = input.value.trim().slice(0, 60);
@@ -312,6 +313,7 @@ document.getElementById('addPersonForm').addEventListener('submit', event => {
   notify(name + ' 작업자를 추가했습니다.');
 });
 document.getElementById('addTask').addEventListener('click', () => {
+  if (role === 'viewer') return;
   if (tasks.length >= MAX_TASKS) return notify('작업은 최대 100개까지 추가할 수 있습니다.');
   tasks.push({ id: newId(), name: '새 작업', assignee: '', status: '예정', progress: 0 });
   saveTasks();
@@ -335,11 +337,11 @@ document.getElementById('exportData').addEventListener('click', () => {
   setTimeout(() => URL.revokeObjectURL(url), 500);
   notify('작업 및 담당자 목록을 백업했습니다.');
 });
-document.getElementById('importData').addEventListener('click', () => document.getElementById('importFile').click());
+document.getElementById('importData').addEventListener('click', () => { if (role !== 'viewer') document.getElementById('importFile').click(); });
 document.getElementById('importFile').addEventListener('change', async event => {
   const file = event.target.files?.[0];
   event.target.value = '';
-  if (!file) return;
+  if (!file || role === 'viewer') return;
   if (file.size > 250000) return notify('250KB 이하 JSON 파일만 불러올 수 있습니다.');
   try {
     const data = JSON.parse(await file.text());
@@ -377,7 +379,7 @@ document.getElementById('importFile').addEventListener('change', async event => 
 window.progressBoard = {
   getActiveProjectId: activeProjectId,
   setRole(value) {
-    role = value === 'viewer' ? 'viewer' : 'editor';
+    role = value === 'editor' || value === 'owner' ? 'editor' : 'viewer';
     render();
   },
   loadProject() {
