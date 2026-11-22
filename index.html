@@ -43,6 +43,11 @@
       white-space: nowrap;
       overflow-x: auto;
     }
+    #modePill { cursor:pointer; transition:border-color .2s, background .2s; }
+    #modePill:hover { border-color:#b78bdf; background:#382846; }
+    #modePill[data-state="success"] .mode-dot { background:#72d7a1; box-shadow:0 0 0 3px #72d7a126; }
+    #modePill[data-state="error"] .mode-dot { background:#fb8080; box-shadow:0 0 0 3px #fb808026; }
+    #modePill[data-state="loading"] .mode-dot { background:#f6c778; box-shadow:0 0 0 3px #f6c77826; }
     .team-account-panel { margin-top:22px; padding-top:18px; border-top:1px solid #454059; }
     .team-account-head { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; }
     .team-account-head h3 { margin:0; font-size:17px; }
@@ -87,7 +92,7 @@
           <button class="button button-outline">수정 저장</button>
         </form>
       </div>
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="mode-pill" id="modePill"><span class="mode-dot"></span><span id="modeLabel">로컬 저장 모드</span></span><button type="button" class="mode-pill" id="accessTag">권한 관리</button></div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button type="button" class="mode-pill" id="modePill" aria-label="연결 상태와 계정 정보 확인" aria-controls="accessDialog" aria-haspopup="dialog" data-state="idle"><span class="mode-dot"></span><span id="modeLabel">로그인 필요</span></button><button type="button" class="mode-pill" id="accessTag">권한 관리</button></div>
       <dialog id="accessDialog" aria-labelledby="accessHeading">
         <h2 id="accessHeading">권한 관리</h2><p id="accessInfo">공유 연결 후 관리자 계정으로 로그인해 주세요.</p>
         <form id="accessForm" hidden><label>계정 이메일<input type="email" class="meta-input" name="email" required></label>
