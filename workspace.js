@@ -17,7 +17,7 @@
   let projects = loadProjects();
   let activeId = readActiveId();
   let items = loadItems(activeId);
-  let role = 'local';
+  let role = 'viewer'; // Require verified membership before editing team content.
   let editing = null;
 
   function copy(value) { return JSON.parse(JSON.stringify(value)); }
@@ -66,191 +66,15 @@
     };
   }
   function loadItems(projectId) {
+    // Existing drafts remain in this browser. Never embed private project URLs in
+    // a public GitHub Pages JavaScript bundle; shared materials load after login.
     try {
       const raw = localStorage.getItem(activeStorageKey(projectId));
       const rows = raw ? JSON.parse(raw) : [];
       if (!Array.isArray(rows) || rows.length > MAX_ITEMS) throw new Error('Invalid content list');
-      const saved = rows.map(sanitizeItem).filter(Boolean);
-      const key = activeStorageKey(projectId);
-      const marker = key + ':notion-import-v2';
-      if (projectId !== DEFAULT_ID) return saved;
-      const source = [
-        {
-          "id": "dna-initial-0",
-          "kind": "reference",
-          "title": "Spherikal — Ion Lucin",
-          "url": "https://vimeo.com/39792837",
-          "body": "도트의 분열·집합·형태 변화 참고"
-        },
-        {
-          "id": "dna-initial-1",
-          "kind": "reference",
-          "title": "Circle HQ Screen — BUCK",
-          "url": "https://www.buck.co/work/circle-hq-screen",
-          "body": "그래픽에서 실사로 넘어가는 전환 참고"
-        },
-        {
-          "id": "dna-initial-2",
-          "kind": "reference",
-          "title": "MULTRA Brand Film",
-          "url": "https://vimeo.com/1135619204",
-          "body": "씬 사이의 움직임과 편집 리듬 참고"
-        },
-        {
-          "id": "dna-initial-3",
-          "kind": "checklist",
-          "title": "협업자에게 페이지 공유하고 편집 권한 부여",
-          "url": "",
-          "body": "",
-          "category": "협업 준비"
-        },
-        {
-          "id": "dna-initial-4",
-          "kind": "checklist",
-          "title": "레퍼런스별 참고할 모션·전환 포인트 합의",
-          "url": "",
-          "body": "",
-          "category": "협업 준비"
-        },
-        {
-          "id": "dna-initial-5",
-          "kind": "checklist",
-          "title": "원본 구성안 10개 씬의 필수 자막 확인",
-          "url": "",
-          "body": "",
-          "category": "연출·제작"
-        },
-        {
-          "id": "dna-initial-6",
-          "kind": "checklist",
-          "title": "전체 씬의 연결 구조와 주요 연출 방향 합의",
-          "url": "",
-          "body": "",
-          "category": "연출·제작"
-        },
-        {
-          "id": "dna-initial-7",
-          "kind": "checklist",
-          "title": "무채색 레이아웃과 모션 블로킹 검토",
-          "url": "",
-          "body": "",
-          "category": "연출·제작"
-        },
-        {
-          "id": "dna-initial-8",
-          "kind": "checklist",
-          "title": "실제 업무 영상 소스 선별 및 사용 가능 범위 확인",
-          "url": "",
-          "body": "",
-          "category": "연출·제작"
-        },
-        {
-          "id": "dna-initial-9",
-          "kind": "checklist",
-          "title": "사운드·타이포·타이틀·로고 확인",
-          "url": "",
-          "body": "",
-          "category": "최종 검수"
-        },
-        {
-          "id": "dna-initial-10",
-          "kind": "checklist",
-          "title": "최종 영상의 가독성·러닝타임·납품 포맷 확인",
-          "url": "",
-          "body": "",
-          "category": "최종 검수"
-        },
-        {
-          "id": "dna-folder-11",
-          "kind": "resource",
-          "title": "메인 폴더",
-          "url": "https://drive.google.com/drive/folders/11mpdrtlcBUQFravgXBFccNc5p1LGzLFj",
-          "body": "LG U+ 연말시상식"
-        },
-        {
-          "id": "dna-folder-12",
-          "kind": "resource",
-          "title": "브랜드 가이드·로고",
-          "url": "https://drive.google.com/drive/folders/1cZZXdjUCdhucEbYeFoDDaV1_DTbKutad",
-          "body": "LG U+ 브랜딩"
-        },
-        {
-          "id": "dna-folder-13",
-          "kind": "resource",
-          "title": "과거 영상 참고",
-          "url": "https://drive.google.com/drive/folders/1ka_xZukJuIVzFkb3tenGqWMWldgEi7MA",
-          "body": "지난영상"
-        },
-        {
-          "id": "dna-folder-14",
-          "kind": "resource",
-          "title": "키비주얼 참고",
-          "url": "https://drive.google.com/drive/folders/1VhZjUdoXvlQmoz_cNInHzZIIk0YCUKs4",
-          "body": "키이미지"
-        },
-        {
-          "id": "dna-slot-15",
-          "kind": "resource",
-          "title": "스크립트 / 행사 기획서",
-          "body": "링크 등록 예정"
-        },
-        {
-          "id": "dna-slot-16",
-          "kind": "resource",
-          "title": "시안 / AE 프로젝트 / 렌더",
-          "body": "링크 등록 예정"
-        },
-        {
-          "id": "dna-slot-17",
-          "kind": "resource",
-          "title": "최종 산출물",
-          "body": "링크 등록 예정"
-        },
-        {
-          "id": "dna-direction",
-          "kind": "note",
-          "title": "ONE DOT, ONE FLOW · 연출 방향",
-          "body": "클라이언트 요청: 하나의 오브제가 영상 전반에 걸쳐 계속 변화하고 이어지는 연출. 기존 구성안의 자막·실사 구간·전체 흐름은 유지하되, '빛' 콘셉트는 확정된 디자인이 아님. LG U+ 도트 심볼을 중심으로 연출을 새로 제안할 예정.\n검토 순서: 형태 변화 → 실사 결합 → 전체 흐름."
-        }
-      ];
-      const sevenMarker = key + ':seven-v1';
-      const additions = localStorage.getItem(marker) ? [] : source;
-      if (!localStorage.getItem(sevenMarker)) additions.push(...[
-  {
-    "id": "dna-seven-orbs",
-    "kind": "reference",
-    "title": "SEVEN — Orb's Journey",
-    "url": "https://www.youtube.com/watch?v=HPcAMa3SSpE",
-    "body": "SC01·04·06 | ONE DOT의 이동 방향과 속도를 이어 매치컷을 만들고, 구체가 패턴과 타이포로 변형되도록 설계한다.\nBehance https://www.behance.net/gallery/153444425/Orbs-Journey"
-  },
-  {
-    "id": "dna-seven-mono",
-    "kind": "reference",
-    "title": "SEVEN — Monochrome",
-    "url": "https://www.youtube.com/watch?v=bN-C68HoH9A",
-    "body": "SC01 | 블랙·차콜·그레이·화이트 그라데이션으로 DOT의 깊이와 공간을 잡는다. 모노톤 스타일프레임에서 형태를 확정한 뒤 브랜드 컬러와 라이팅을 적용한다."
-  },
-  {
-    "id": "dna-seven-comma",
-    "kind": "reference",
-    "title": "SEVEN — Comma",
-    "url": "https://www.youtube.com/watch?v=Q_ROGVLc4TA",
-    "body": "SC02·04·07·09 | Shape Layer로 DOT와 타이포를 연결하고 형태 변형과 이징을 설계한다.\nAE 제작 과정 https://www.youtube.com/watch?v=zLkLPfWKSRw\n00:10 Faux 3D · 03:12 Animation · 10:17 Liquid · 18:53 Styling · 26:49 Transition"
-  }
-]);
-      for (const item of additions) {
-        if (saved.length >= MAX_ITEMS) break;
-        if (!saved.some(row => row.id === item.id || (row.kind === item.kind &&
-          (row.title === item.title || (item.url && row.url === item.url))))) {
-          saved.push(sanitizeItem(item, saved.length));
-        }
-      }
-      localStorage.setItem(key, JSON.stringify(saved));
-      localStorage.setItem(marker, '1');
-      localStorage.setItem(sevenMarker, '1');
-      return saved;
-    } catch (e) {
-      console.warn('프로젝트 기록 불러오기 실패:', e);
+      return rows.map(sanitizeItem).filter(Boolean);
+    } catch (error) {
+      console.warn('프로젝트 기록 불러오기 실패:', error);
       return [];
     }
   }
@@ -656,7 +480,7 @@
     getProjectId: () => activeId,
     getProjects: () => copy(projects),
     getSnapshot: () => copy(items),
-    setRole(next) { role = next; render(); },
+    setRole(next) { role = ['owner','editor'].includes(next) ? next : 'viewer'; render(); },
     loadCloudProjects(remote) {
       if (!Array.isArray(remote)) return;
       const seen = new Set();
@@ -678,11 +502,16 @@
       const checked = remote.map(sanitizeItem);
       if (checked.some(x => !x)) throw new Error('Invalid remote content record');
       const key = activeStorageKey(activeId);
-      try {
-        const backupKey = key + ':backup:' + new Date().toISOString().slice(0, 10);
-        if (!localStorage.getItem(backupKey))
+      // Every differing local draft gets its own backup before remote cache replaces it.
+      // A once-per-day backup can miss later edits within the same day.
+      if (JSON.stringify(items) !== JSON.stringify(checked) && items.length) {
+        const backupKey = key + ':backup:' + Date.now().toString(36) + '-' + newId();
+        try {
           localStorage.setItem(backupKey, JSON.stringify(items));
-      } catch (e) { console.warn(e); }
+        } catch (error) {
+          throw new Error('이 브라우저의 기존 자료를 백업하지 못했습니다. 저장 공간을 확인한 뒤 다시 시도하세요.');
+        }
+      }
       items = checked;
       persist(false);
       render();
