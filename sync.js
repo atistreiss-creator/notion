@@ -264,7 +264,6 @@
     for (const panel of document.querySelectorAll('[data-owner-panel]')) panel.hidden = !visible;
   }
   async function handleSession(session) {
-    window.frameBoard.connect(null);
     setOwnerPanels(false);
     const generation = ++authGeneration;
     if (el('accessDialog').open) el('accessDialog').close();
@@ -326,7 +325,6 @@
     setOwnerPanels(memberRole === 'owner');
     board.setRole(memberRole);
     workspace?.setRole(memberRole);
-    window.frameBoard.connect(client, memberRole);
     const schemaProbe = await client.from('progress_projects').select('id').limit(1);
     cloudUpgraded = !schemaProbe.error;
     await pullCloud(true);
