@@ -4,6 +4,51 @@
   const scenes = el('frameScene'), cards = el('frameCards'), status = el('frameStatus');
   let client, editable, generation = 0;
   for (let i = 1; i <= 10; i++) scenes.add(new Option('SC' + String(i).padStart(2, '0'), i));
+  const nameForm = el('sceneNameForm'), nameInput = el('sceneNameInput'), nameStatus = el('sceneNameStatus');
+  function displayNames(rows) {
+    const names = new Map(rows.map(row => [row.scene, row.name]));
+    for (const option of scenes.options) {
+      const code = 'SC' + option.value.padStart(2,'0');
+      const name = names.get(Number(option.value));
+      option.textContent = name ? code + ' · ' + name : code;
+    }
+    nameInput.value = names.get(Number(scenes.value)) || '';
+  }
+  async function loadNames(token) {
+    nameForm.hidden = true;
+    nameStatus.textContent = '';
+    displayNames([]);
+    if (!client) return;
+    const {data,error} = await client.from('styleframe_scene_names').select('scene,name')
+      .eq('project',window.progressBoard.getActiveProjectId());
+    if (token !== generation) return;
+    if (error) {
+      nameStatus.textContent = ['PGRST205','42P01'].includes(error.code)
+        ? '씬 이름 저장소 설정이 필요해요.' : error.message;
+      return;
+    }
+    displayNames(data);
+    nameForm.hidden = !editable;
+  }
+  nameForm.onsubmit = async event => {
+    event.preventDefault();
+    if (!client || !editable || nameForm.hidden) return;
+    const token = generation, button = nameForm.querySelector('button');
+    if (button.disabled) return;
+    button.disabled = true;
+    try {
+      const name = nameInput.value.trim(), scene = Number(scenes.value);
+      const project = window.progressBoard.getActiveProjectId();
+      const {error} = await client.from('styleframe_scene_names')
+        .upsert({project,scene,name},{onConflict:'project,scene'});
+      if (token !== generation) return;
+      if (error) { nameStatus.textContent = error.message; return; }
+      const option = scenes.selectedOptions[0];
+      option.textContent = 'SC' + option.value.padStart(2,'0') + (name ? ' · ' + name : '');
+      nameInput.value = name;
+      nameStatus.textContent = '씬 이름을 저장했어요.';
+    } finally { button.disabled = false; }
+  };
   function element(tag, text) {
     const node = document.createElement(tag);
     node.textContent = text;
@@ -16,6 +61,7 @@
   }
   async function load() {
     const token = ++generation;
+    void loadNames(token);
     cards.replaceChildren();
     el('frameUpload').hidden = true;
     if (!client) {
