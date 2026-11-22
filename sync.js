@@ -473,6 +473,50 @@
         state.dataset.state = record.registration_state;
         state.textContent = teamAccountStatus(record);
         row.append(info,state);
+
+        // Only the owner may revoke a member's access or cancel a pending invite.
+        // The server-side progress_revoke_email RPC independently verifies owner rights.
+        if (record.access_role !== 'owner') {
+          const revokeButton = document.createElement('button');
+          revokeButton.type = 'button';
+          revokeButton.className = 'button button-outline';
+          const pendingInvite = record.registration_state === 'pending';
+          revokeButton.textContent = pendingInvite ? '초대 취소' : '권한 삭제';
+          revokeButton.setAttribute('aria-label',
+            (record.email || '해당 계정') + (pendingInvite ? ' 초대 취소' : ' 권한 삭제'));
+          revokeButton.addEventListener('click', async () => {
+            if (!client || !member || memberRole !== 'owner' || !record.email) return;
+            const userEmail = record.email;
+            const action = pendingInvite ? '초대 대기를 취소' : '협업보드 접근 권한을 삭제';
+            if (!window.confirm(
+              userEmail + '\n\n이 계정의 ' + action + '할까요?' +
+              '\n\nGoogle 계정과 기존 공유 작업 자료는 삭제하지 않습니다.'
+            )) return;
+
+            const clickedGeneration = authGeneration;
+            revokeButton.disabled = true;
+            teamAccountUI.result.textContent = pendingInvite ? '초대 취소 중…' : '권한 삭제 중…';
+            try {
+              const {data, error} = await client.rpc('progress_revoke_email',
+                {target_email: userEmail});
+              if (clickedGeneration !== authGeneration || !member || memberRole !== 'owner') return;
+              if (error) throw error;
+              if (data !== 'revoked' && data !== 'not_found')
+                throw new Error('권한 삭제 처리 결과를 확인할 수 없습니다.');
+              await loadTeamAccounts();
+              if (data === 'not_found' && clickedGeneration === authGeneration && member && memberRole === 'owner') {
+                teamAccountUI.result.textContent = '이미 삭제되었거나 삭제할 권한이 없는 계정입니다.';
+              }
+            } catch (error) {
+              if (clickedGeneration === authGeneration && member && memberRole === 'owner') {
+                teamAccountUI.result.textContent = '권한 삭제 실패: ' + error.message;
+              }
+            } finally {
+              revokeButton.disabled = false;
+            }
+          });
+          row.append(revokeButton);
+        }
         teamAccountUI.list.append(row);
       }
       if (!registered && !pending) {
