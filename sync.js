@@ -115,6 +115,15 @@
   function renderRecovery() {
     const projectId = board.getActiveProjectId();
     if (recoveryProject !== projectId) { recoveryProject = projectId; recoveryChoices.clear(); }
+    // Never expose cached team-content titles or backups to an unverified visitor.
+    if (!member || !cloudUpgraded || baselineProjectId !== projectId) {
+      recoveryUI.summary.textContent = '승인된 계정으로 로그인한 후 이전 자료 확인';
+      recoveryUI.list.replaceChildren();
+      recoveryUI.backup.disabled = true;
+      recoveryUI.upload.disabled = true;
+      recoveryUI.prompt.textContent = '이 브라우저의 예전 자료는 삭제하지 않았습니다. 승인된 Google 계정으로 로그인하면 백업과 선택 공유를 진행할 수 있습니다.';
+      return;
+    }
     const rows = pendingRecoveryRows();
     recoveryUI.list.replaceChildren();
     recoveryUI.summary.textContent = '이 브라우저의 미공유 자료 확인 (' + rows.length + '개 후보)';
