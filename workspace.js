@@ -17,7 +17,7 @@
   let projects = loadProjects();
   let activeId = readActiveId();
   let items = loadItems(activeId);
-  let role = 'local';
+  let role = 'viewer'; // Require verified membership before editing team content.
   let editing = null;
 
   function copy(value) { return JSON.parse(JSON.stringify(value)); }
@@ -656,7 +656,7 @@
     getProjectId: () => activeId,
     getProjects: () => copy(projects),
     getSnapshot: () => copy(items),
-    setRole(next) { role = next; render(); },
+    setRole(next) { role = ['owner','editor'].includes(next) ? next : 'viewer'; render(); },
     loadCloudProjects(remote) {
       if (!Array.isArray(remote)) return;
       const seen = new Set();
