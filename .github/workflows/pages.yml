@@ -27,30 +27,9 @@ jobs:
           node --check workspace.js
           node --check sync.js
       - name: Upload static site
-        id: archive
         uses: actions/upload-pages-artifact@v3
         with:
           path: '.'
       - name: Deploy
         id: deployment
-        uses: actions/github-script@v7
-        env:
-          ARTIFACT_ID: ${{ steps.archive.outputs.artifact_id }}
-        with:
-          script: |
-            const repo = context.repo;
-            const response = await github.request('POST /repos/{owner}/{repo}/pages/deployments', {
-              ...repo, artifact_id: Number(process.env.ARTIFACT_ID),
-              pages_build_version: context.sha, oidc_token: await core.getIDToken()
-            });
-            core.setOutput('page_url', response.data.page_url);
-            for (let attempt = 0; attempt < 60; attempt++) {
-              const result = await github.request('GET /repos/{owner}/{repo}/pages/deployments/{pages_deployment_id}', {
-                ...repo, pages_deployment_id: response.data.id
-              });
-              if (result.data.status === 'succeed') return;
-              if (['deployment_failed','deployment_cancelled','deployment_timeout','deployment_content_failed'].includes(result.data.status))
-                throw new Error(result.data.status);
-              await new Promise(resolve => setTimeout(resolve, 5000));
-            }
-            throw new Error('Pages deployment timed out');
+        uses: actions/deploy-pages@v4
