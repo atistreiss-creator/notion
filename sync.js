@@ -245,8 +245,18 @@
     event.preventDefault();
     if (!client || !member || memberRole !== 'owner') return;
     const fields = new FormData(accessForm);
-    const {error} = await client.rpc('progress_set_access',{target_email:fields.get('email'),access_role:fields.get('role')});
-    accessInfo.textContent = error ? '권한 적용 실패 · ' + error.message : '권한을 적용했습니다.';
+    const args = {target_email: fields.get('email').trim(), access_role: fields.get('role')};
+    let result = await client.rpc('progress_assign_email', args);
+    if (result.error?.code === 'PGRST202') {
+      result = await client.rpc('progress_set_access', args);
+      if (result.error) {
+        accessInfo.textContent = '권한 적용 실패 · 이메일 사전 지정 설정을 확인해 주세요.';
+        return;
+      }
+    }
+    accessInfo.textContent = result.error ? '권한 적용 실패 · ' + result.error.message
+      : result.data === 'pending' ? '권한을 예약했습니다. 이 이메일로 처음 로그인하면 적용됩니다.'
+      : '권한을 적용했습니다.';
   });
   function setOwnerPanels(visible) {
     document.documentElement.classList.toggle('verified-board-owner', visible);
@@ -288,6 +298,14 @@
     status('접근 권한 확인 중…', 'loading');
     const claim = await client.rpc('progress_claim_owner');
     if (generation !== authGeneration) return;
+    if (claim.data !== true) {
+      const accepted = await client.rpc('progress_accept_email');
+      if (generation !== authGeneration) return;
+      if (accepted.error && accepted.error.code !== 'PGRST202') {
+        status('예약 권한 확인 실패 · ' + accepted.error.message, 'error');
+        return;
+      }
+    }
     const { data, error } = await client.from('progress_members')
       .select('user_id,role').eq('user_id', session.user.id).maybeSingle();
     if (generation !== authGeneration) return;
