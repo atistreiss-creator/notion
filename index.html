@@ -10,8 +10,11 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
   <script src="./app.js?v=project-links-12" defer></script>
   <script src="./workspace.js?v=google-seven-23" defer></script>
-  <script src="./sync.js?v=email-access-25" defer></script>
+  <script src="./sync.js?v=team-recovery-26" defer></script>
   <style>
+    html:not(.verified-board-member) :is(.overview,.workspace-sections,.board) { display:none!important; }
+    html.verified-board-member #loginNotice { display:none!important; }
+    #syncImportArea { display:none!important; }
     html:not(.verified-board-owner) :is(.people-panel,.sync-panel,.workspace-data-actions,.toolbar),
     #accountControls :is(#copyTeamLink,#syncRefresh,#syncImportArea) { display: none !important; }
     [data-owner-panel][hidden] { display: none !important; }
@@ -40,6 +43,16 @@
       white-space: nowrap;
       overflow-x: auto;
     }
+    .recovery-panel { margin:16px 0 24px;padding:18px 20px;border:1px solid #4a335c;background:#211b32;border-radius:16px; }
+    .recovery-panel h3 {margin:0 0 9px;font-size:17px}
+    .recovery-panel p {font-size:12px;line-height:1.65;color:#c8bddb}
+    .recovery-panel .recovery-buttons {display:flex;flex-wrap:wrap;gap:9px;margin-top:12px}
+    .recovery-panel .recovery-buttons button {white-space:normal}
+    .recovery-panel .recovery-list {margin-top:12px;max-height:280px;overflow:auto;display:flex;flex-direction:column;gap:6px}
+    .recovery-panel .recovery-list label {display:flex;gap:9px;align-items:flex-start;line-height:1.5;font-size:12px;padding:7px 8px;background:#15182b;border-radius:8px}
+    .recovery-panel #recoveryStatus {white-space:normal;overflow-wrap:anywhere}
+    .recovery-panel details summary {cursor:pointer;font-weight:700}
+    .recovery-panel button:disabled {opacity:.5;cursor:not-allowed}
   </style>
 <style>
     #syncStatus { width: max-content; max-width: 100%; min-width: 0; white-space: nowrap; overflow-x: auto; box-sizing: border-box; }
@@ -73,6 +86,25 @@
       </dialog>
     </header>
 
+
+    <section class="recovery-panel" id="loginNotice" aria-label="로그인 안내">
+      <h3>팀 협업보드 · Google 로그인 필요</h3>
+      <p>승인된 계정으로 로그인해야 팀 자료를 읽고 편집할 수 있습니다. 이 브라우저에 이전에 작성한 내용이 있다면 아래에서 먼저 백업하세요. 로그인하지 않은 상태에서는 팀에 저장되지 않습니다.</p>
+      <button type="button" class="button button-primary" id="loginFromNotice">로그인·접속 설정 열기</button>
+    </section>
+    <section class="recovery-panel" id="localRecoveryPanel" aria-label="기존 자료 복구 및 팀 공유">
+      <h3>이 기기에 작성했던 자료 가져오기</h3>
+      <p id="recoveryPrompt">기존에 작성한 글이 있다면 이 기기에서 확인하고 백업할 수 있습니다. 팀 공유 전송은 승인된 편집자 계정으로 로그인한 뒤 가능합니다.</p>
+      <details id="recoveryDetails">
+        <summary id="recoverySummary">이 브라우저 자료 확인</summary>
+        <div id="recoveryEntries" class="recovery-list"></div>
+      </details>
+      <div class="recovery-buttons">
+        <button type="button" class="button button-outline" id="recoveryBackup">기존 자료 백업(JSON)</button>
+        <button type="button" class="button button-primary" id="recoveryUpload" disabled>선택 자료 팀에 공유하기</button>
+      </div>
+      <p id="recoveryStatus" role="status" aria-live="polite"></p>
+    </section>
 
     <section class="project-switcher" aria-label="프로젝트 선택">
       <div class="project-choice">
