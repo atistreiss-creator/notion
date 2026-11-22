@@ -502,11 +502,16 @@
       const checked = remote.map(sanitizeItem);
       if (checked.some(x => !x)) throw new Error('Invalid remote content record');
       const key = activeStorageKey(activeId);
-      try {
-        const backupKey = key + ':backup:' + new Date().toISOString().slice(0, 10);
-        if (!localStorage.getItem(backupKey))
+      // Every differing local draft gets its own backup before remote cache replaces it.
+      // A once-per-day backup can miss later edits within the same day.
+      if (JSON.stringify(items) !== JSON.stringify(checked) && items.length) {
+        const backupKey = key + ':backup:' + Date.now().toString(36) + '-' + newId();
+        try {
           localStorage.setItem(backupKey, JSON.stringify(items));
-      } catch (e) { console.warn(e); }
+        } catch (error) {
+          throw new Error('이 브라우저의 기존 자료를 백업하지 못했습니다. 저장 공간을 확인한 뒤 다시 시도하세요.');
+        }
+      }
       items = checked;
       persist(false);
       render();
