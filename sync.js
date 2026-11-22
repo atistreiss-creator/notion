@@ -233,9 +233,25 @@
     ui.status.dataset.state = kind;
     const label = el('modeLabel');
     const desc = el('storageDescription');
-    if (label) label.textContent = kind === 'success' && member
-      ? (cloudUpgraded ? '팀 공유 모드' : '작업 공유 모드')
-      : member ? (kind === 'error' ? '동기화 오류' : text) : '이 브라우저에만 저장';
+    const pill = el('modePill');
+    if (pill) {
+      pill.dataset.state = kind;
+      pill.title = '현재 계정 및 공유 연결 상태를 확인하려면 누르세요.\n' + text;
+    }
+    if (label) {
+      const connected = kind === 'success' && member && cloudUpgraded &&
+        baselineProjectId === board.getActiveProjectId();
+      const roleLabel = memberRole === 'owner' ? '관리자' :
+        memberRole === 'editor' ? '편집자' : memberRole === 'viewer' ? '뷰어' : '사용자';
+      label.textContent = kind === 'error' ? '동기화 오류 · 확인 필요'
+        : kind === 'loading' ? '공유 데이터 확인 중'
+        : !currentSession ? '로그인 필요'
+        : !member ? '접근 승인 대기'
+        : !cloudUpgraded ? '공유 설정 확인 필요'
+        : connected ? (memberRole === 'viewer' ? '뷰어 · 읽기 전용'
+          : roleLabel + ' · 공유 연결됨')
+        : '공유 상태 확인 필요';
+    }
     if (desc) desc.textContent = kind === 'success' && member
       ? (cloudUpgraded
         ? '프로젝트별 작업과 자료는 Supabase에 자동 저장됩니다.'
@@ -391,16 +407,112 @@
   }
   window.addEventListener('progress:render',drawLayout);
   window.addEventListener('workspace:render',drawLayout);
+
+  // Owner-only team account directory. Emails are delivered by an owner-guarded
+  // security-definer RPC; never fetch auth.users directly from the browser.
+  const teamAccountUI = {
+    list: el('teamAccountList'), result: el('teamAccountResult'),
+    refresh: el('teamAccountRefresh')
+  };
+  function clearTeamAccounts() {
+    teamAccountUI.list.replaceChildren();
+    teamAccountUI.result.textContent = '관리자 로그인 후 팀원 정보를 확인합니다.';
+  }
+  function teamAccountRole(role) {
+    return role === 'owner' ? '관리자' : role === 'editor' ? '편집자' : '뷰어';
+  }
+  function teamAccountStatus(record) {
+    if (record.registration_state === 'member') {
+      if (!record.email_verified) return '권한 적용 · 이메일 인증 확인 필요';
+      return record.last_sign_in_at ? '계정 등록 · 로그인 기록 확인' : '권한 적용 · 로그인 기록 없음';
+    }
+    return record.last_sign_in_at ? '로그인 기록 있음 · 권한 적용 대기' :
+      '이메일 등록 · 최초 로그인 대기';
+  }
+  async function loadTeamAccounts() {
+    if (!client || !member || memberRole !== 'owner') {
+      clearTeamAccounts();
+      return;
+    }
+    const generation = authGeneration;
+    teamAccountUI.refresh.disabled = true;
+    teamAccountUI.result.textContent = '계정 현황 불러오는 중…';
+    try {
+      const {data,error} = await client.rpc('progress_team_accounts');
+      if (generation !== authGeneration || !member || memberRole !== 'owner') return;
+      if (error) throw error;
+      if (!Array.isArray(data)) throw new Error('올바른 팀원 조회 결과가 아닙니다.');
+      teamAccountUI.list.replaceChildren();
+      let registered = 0, pending = 0;
+      for (const record of data) {
+        if (record.registration_state === 'member') registered++;
+        else if (record.registration_state === 'pending') pending++;
+        else continue;
+        const row = document.createElement('div');
+        row.className = 'team-account-row';
+        const info = document.createElement('div');
+        const address = document.createElement('div');
+        address.className = 'team-account-email';
+        address.textContent = record.email || '이메일 없음';
+        const meta = document.createElement('div');
+        meta.className = 'team-account-meta';
+        const role = document.createElement('span');
+        role.textContent = '권한: ' + teamAccountRole(record.access_role);
+        const last = document.createElement('span');
+        if (record.last_sign_in_at) {
+          const at = new Date(record.last_sign_in_at);
+          last.textContent = '마지막 로그인: ' + (Number.isNaN(at.getTime()) ? '확인 불가' :
+            at.toLocaleString('ko-KR', {timeZone:'Asia/Seoul',dateStyle:'medium',timeStyle:'short'}));
+        } else {
+          last.textContent = '로그인 기록 없음';
+        }
+        meta.append(role,last);
+        info.append(address,meta);
+        const state = document.createElement('span');
+        state.className = 'team-account-status';
+        state.dataset.state = record.registration_state;
+        state.textContent = teamAccountStatus(record);
+        row.append(info,state);
+        teamAccountUI.list.append(row);
+      }
+      if (!registered && !pending) {
+        const empty = document.createElement('p');
+        empty.textContent = '등록된 계정이 없습니다.';
+        teamAccountUI.list.append(empty);
+      }
+      teamAccountUI.result.textContent = '권한 적용 ' + registered +
+        '명 · 이메일 승인 대기 ' + pending + '명 · 새로고침으로 최신 상태 확인';
+    } catch (error) {
+      if (generation !== authGeneration || !member || memberRole !== 'owner') return;
+      teamAccountUI.result.textContent = error.code === 'PGRST202'
+        ? '팀원 조회 SQL 미설치: Supabase에서 supabase/team-account-status.sql을 먼저 실행해 주세요.'
+        : '팀원 조회 실패: ' + error.message;
+    } finally {
+      if (generation === authGeneration) teamAccountUI.refresh.disabled = false;
+    }
+  }
+  teamAccountUI.refresh.addEventListener('click', () => { void loadTeamAccounts(); });
+
   const accessForm = el('accessForm');
   const accessInfo = el('accessInfo');
+  el('modePill').addEventListener('click', () => el('accessTag').click());
   el('accessTag').addEventListener('click', () => {
     const owner = member && memberRole === 'owner';
+    if (owner) void loadTeamAccounts();
     accessForm.hidden = !owner;
     const action = el('accessConnect');
     action.hidden = owner || !!currentSession;
     if (!owner && currentSession) showAccountControls();
     action.textContent = client ? 'Google 로그인' : '보드 연결';
-    accessInfo.textContent = owner ? '이메일 인증을 마친 계정의 전체 공유 보드 권한을 설정합니다.' : currentSession ? '이 계정에는 관리자 권한이 없습니다.' : client ? 'Google 계정으로 로그인해 공유 보드를 여세요.' : '처음 한 번, 이 브라우저를 공유 보드에 연결해 주세요.';
+    const account = currentSession?.user?.email || '미로그인';
+    accessInfo.textContent = owner
+      ? account + ' · 관리자 계정 · 팀원과 편집 권한을 관리할 수 있습니다.'
+      : currentSession && member
+      ? account + ' · ' + teamAccountRole(memberRole) + ' 계정 · 공유 상태를 확인할 수 있습니다.'
+      : currentSession
+      ? account + ' · 로그인 완료, 관리자 승인 대기 중'
+      : client ? 'Google 계정으로 로그인해 공유 보드를 여세요.'
+      : '처음 한 번, 이 브라우저를 공유 보드에 연결해 주세요.';
     el('accessDialog').showModal();
   });
   const accountParts = ['syncStatus', 'syncKeyForm', 'syncAuthArea'].map(id => {
@@ -439,6 +551,7 @@
     accessInfo.textContent = result.error ? '권한 적용 실패 · ' + result.error.message
       : result.data === 'pending' ? '권한을 예약했습니다. 이 이메일로 처음 로그인하면 적용됩니다.'
       : '권한을 적용했습니다.';
+    if (!result.error) void loadTeamAccounts();
   });
   function setOwnerPanels(visible) {
     document.documentElement.classList.toggle('verified-board-owner', visible);
@@ -446,6 +559,7 @@
   }
   async function handleSession(session) {
     setOwnerPanels(false);
+    clearTeamAccounts();
     document.documentElement.classList.remove('verified-board-member');
     const generation = ++authGeneration;
     if (el('accessDialog').open) el('accessDialog').close();
@@ -521,6 +635,9 @@
       workspace?.setRole('viewer');
     }
     renderRecovery();
+    if (memberRole === 'owner' && document.documentElement.classList.contains('verified-board-member')) {
+      void loadTeamAccounts();
+    }
     subscribeRealtime();
   }
 
