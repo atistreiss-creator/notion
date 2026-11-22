@@ -246,11 +246,12 @@
     if (!client || !member || memberRole !== 'owner') return;
     const fields = new FormData(accessForm);
     const args = {target_email: fields.get('email').trim(), access_role: fields.get('role')};
+    accessInfo.textContent = '권한 적용 중…';
     let result = await client.rpc('progress_assign_email', args);
     if (result.error?.code === 'PGRST202') {
       result = await client.rpc('progress_set_access', args);
-      if (result.error) {
-        accessInfo.textContent = '권한 적용 실패 · 이메일 사전 지정 설정을 확인해 주세요.';
+      if (result.error?.code === 'PGRST202') {
+        accessInfo.textContent = '권한 저장 기능이 연결되지 않았습니다. Supabase에서 owner-access.sql과 email-access.sql 적용 상태를 확인해 주세요.';
         return;
       }
     }
