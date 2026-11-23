@@ -319,10 +319,21 @@
     const form = event.currentTarget;
     const previous = itemId ? items.find(x => x.id === itemId && x.kind === kind) : null;
     if (itemId && !previous) return;
-    const val = sanitizeItem({...previous, ...Object.fromEntries(new FormData(form)), kind,
+    const formValues = new FormData(form);
+    const suppliedUrl = String(formValues.get('url') ?? '').trim();
+    // A shared resource can start as a note, with its URL added later.
+    // Reference links remain required. Non-empty malformed links are rejected.
+    if (['resource','reference'].includes(kind)) {
+      if (suppliedUrl && !sanitizeUrl(suppliedUrl)) {
+        return alert('올바른 http 또는 https 링크를 입력해 주세요.');
+      }
+      if (kind === 'reference' && !suppliedUrl) {
+        return alert('레퍼런스 링크를 입력해 주세요.');
+      }
+    }
+    const val = sanitizeItem({...previous, ...Object.fromEntries(formValues), kind,
       id: itemId || newId(), sort_order: previous?.sort_order ?? items.length});
     if (!val) return;
-    if (['resource','reference'].includes(kind) && !val.url) return alert('http 또는 https 링크를 입력해주세요.');
     if (previous) items = items.map(x => x.id === itemId ? val : x);
     else if (items.length < MAX_ITEMS) items.push(val);
     else return alert('프로젝트당 최대 ' + MAX_ITEMS + '개 항목을 등록할 수 있어요.');

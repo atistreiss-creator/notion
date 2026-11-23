@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="./styles.css?v=row-drag-9">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
   <script src="./app.js?v=project-links-12" defer></script>
-  <script src="./workspace.js?v=google-seven-23" defer></script>
+  <script src="./workspace.js?v=resource-notes-24" defer></script>
   <script src="./sync.js?v=team-accounts-28" defer></script>
   <style>
     html:not(.verified-board-member) :is(.overview,.workspace-sections,.board) { display:none!important; }
@@ -262,7 +262,8 @@
         <summary><span><span class="workspace-icon">↗</span> 공유 자료 <small id="resourceCount">0개</small></span><span class="workspace-hint">Drive · 산출물 · 참고 파일</span></summary>
         <details id="resourceEditor"><summary>+ 자료 추가</summary><form id="resourceForm" class="workspace-add-form">
           <input name="title" class="meta-input" maxlength="120" placeholder="자료 이름" aria-label="자료 이름" required>
-          <input name="url" class="meta-input" type="url" placeholder="https://drive.google.com/..." aria-label="자료 URL" required>
+          <input name="url" class="meta-input" type="url" placeholder="자료 링크 (선택 · 나중에 등록 가능)" aria-label="자료 URL (선택)">
+          <textarea name="body" class="workspace-textarea" maxlength="1500" rows="2" placeholder="설명 · 코멘트 (예: 과거 영상 참고 / 지난영상 / 링크 등록 예정)" aria-label="공유 자료 설명 및 코멘트"></textarea>
           <button type="submit" class="button button-outline">+ 자료 추가</button>
         </form></details>
         <div id="resourceList" class="workspace-item-list"></div>
